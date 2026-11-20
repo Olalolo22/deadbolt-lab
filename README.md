@@ -32,6 +32,18 @@ Three technologies that never normally touch, stitched into one app that does wh
 - **Simulated:** the chain clock and the heartbeat channel. A demo clock runs at **1 day = 1 second**, with "skip to grace" and "skip to release" controls so the whole lifecycle fits in a 2-minute video.
 - State is kept in `localStorage` for this browser only. This is a design prototype, **not** production key custody.
 
+## Plates (imagery)
+
+Public-domain 19th-century engravings, loaded from Wikimedia Commons and treated two ways:
+inverted into glowing etched backdrops, or printed as bone-paper "plates" with museum captions.
+
+- Theodor von Holst: frontispiece to *Frankenstein* (1831), as the hero backdrop
+- Giovanni Aldini: *Essai sur le galvanisme* (1804), Wellcome Collection, CC BY 4.0, as Plate I and the operating table
+- *A Galvanised Corpse* (1836), behind the lifecycle and Vitals
+- Gustave Doré: *The Raven* (1884), behind the claim page and the closing card
+
+If an image fails to load, its plate hides itself and the page still works.
+
 ## Run
 
 No build step and no dependencies.

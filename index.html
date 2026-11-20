@@ -40,6 +40,14 @@
   --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
+  --img-frontis: url("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Frontispiece_to_Frankenstein_1831.jpg/1280px-Frontispiece_to_Frankenstein_1831.jpg");
+  --img-aldini: url("https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Giovanni_Aldini,_galvanism_experiments_Wellcome_L0007024.jpg/1280px-Giovanni_Aldini,_galvanism_experiments_Wellcome_L0007024.jpg");
+  --img-corpse: url("https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/A_Galvanised_Corpse.jpg/1280px-A_Galvanised_Corpse.jpg");
+  --img-shadow: url("https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Dore_raven_shadow2.jpg/1280px-Dore_raven_shadow2.jpg");
+  --img-raven: url("https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Paul_Gustave_Dore_Raven1.jpg/1280px-Paul_Gustave_Dore_Raven1.jpg");
+  --paper: #e9e1cf;
+  --ink: #15130f;
+
   --r: 14px;
   --r-sm: 9px;
   --pad: clamp(18px, 4vw, 32px);
@@ -135,8 +143,42 @@ main { max-width: var(--max); margin: 0 auto; padding: 0 var(--pad) 80px; }
 .chip-btn.on { background: var(--volt); color: #071003; border-color: var(--volt); }
 .chip-btn:hover { border-color: var(--bone-2); }
 
+/* ---------- etched plates (public-domain 19th c. engravings) ---------- */
+/* Inverted engraving: paper goes black, ink glows like bone. Full-bleed backdrops. */
+.etched { position: relative; isolation: isolate; }
+.etched::before {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  top: 0; bottom: 0; left: 50%; width: 100vw; transform: translateX(-50%);
+  background-image: var(--etch); background-repeat: no-repeat;
+  background-size: var(--etch-size, cover); background-position: var(--etch-pos, center);
+  filter: invert(1) grayscale(1) sepia(.3) contrast(1.7) brightness(.85);
+  opacity: var(--etch-o, .32);
+  -webkit-mask-image: var(--etch-mask, linear-gradient(180deg, transparent, #000 18%, #000 70%, transparent));
+          mask-image: var(--etch-mask, linear-gradient(180deg, transparent, #000 18%, #000 70%, transparent));
+}
+/* Printed plate: black ink on bone paper with a museum caption. */
+.plate { margin: 0 0 96px; border-radius: 24px; overflow: hidden; background: var(--paper); color: var(--ink); position: relative;
+  box-shadow: 0 40px 80px -40px rgba(0,0,0,.9), inset 0 0 0 1px rgba(0,0,0,.08); }
+.plate img { display: block; width: 100%; height: clamp(240px, 46vw, 520px); object-fit: cover; object-position: var(--pos, center);
+  filter: grayscale(1) contrast(1.15) sepia(.12); mix-blend-mode: multiply; }
+.plate figcaption { display: flex; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; padding: 14px 20px 16px; font-size: .68rem;
+  letter-spacing: .12em; text-transform: uppercase; border-top: 1px solid rgba(21,19,15,.18); color: #4a463d; }
+.plate figcaption b { color: var(--ink); font-weight: 600; }
+.plate-quote { position: absolute; left: 20px; right: 20px; top: 18px; margin: 0; font: italic 400 clamp(1.3rem, 4.2vw, 2.3rem)/1.1 var(--f-display);
+  color: var(--ink); text-shadow: 0 0 22px var(--paper), 0 0 8px var(--paper), 0 0 3px var(--paper); max-width: 520px; }
+.plate.is-dead { display: none; }
+
 /* ---------- hero ---------- */
-.hero { padding: clamp(48px, 10vw, 110px) 0 36px; position: relative; }
+.hero { padding: clamp(48px, 10vw, 110px) 0 36px; position: relative;
+  --etch: var(--img-frontis); --etch-size: auto 118%; --etch-pos: right -2vw top 30%; --etch-o: .45;
+  --etch-mask: linear-gradient(90deg, transparent 38%, #000 80%); }
+.hero h1, .hero .lede, .hero-ctas, .hero-monitor { position: relative; }
+.hero-monitor { background: rgba(7,9,10,.72); backdrop-filter: blur(2px); }
+@media (max-width: 760px) {
+  .hero { --etch-size: auto 92%; --etch-pos: 85% 0; --etch-o: .34;
+    --etch-mask: linear-gradient(180deg, #000 25%, transparent 78%); }
+  .hero .lede { text-shadow: 0 1px 14px #07090a, 0 0 3px #07090a; }
+}
 .hero h1 { font-size: clamp(3rem, 11vw, 7.2rem); margin: 0 0 22px; }
 .hero h1 em { color: var(--volt); font-style: italic; text-shadow: 0 0 30px var(--volt-glow); }
 .lede { max-width: 640px; font-size: clamp(1.02rem, 2.2vw, 1.18rem); color: var(--bone-2); margin: 0 0 30px; }
@@ -212,6 +254,22 @@ main { max-width: var(--max); margin: 0 auto; padding: 0 var(--pad) 80px; }
 .lc-rise { border-color: var(--ether); }
 .lc-rise h4 { color: var(--ether); }
 @media (max-width: 760px) { .lifecycle { grid-template-columns: 1fr 1fr; } }
+
+.lifecycle-wrap { --etch: var(--img-corpse); --etch-o: .2; --etch-pos: center 40%; padding-top: 24px; }
+.page-etch-table { --etch: var(--img-aldini); --etch-o: .3; --etch-pos: center 30%; }
+.page-etch-vitals { --etch: var(--img-corpse); --etch-o: .24; --etch-pos: center 35%; }
+.page-etch-claim { --etch: var(--img-shadow); --etch-o: .34; --etch-pos: center 22%; }
+
+/* closing card: an etched scene bleeding up from the bottom */
+.final-card { position: relative; overflow: hidden; border-radius: 28px; background: #000; padding: clamp(48px, 9vw, 90px) 24px 0;
+  text-align: center; border: 1px solid var(--line); margin-bottom: 24px; }
+.final-card h2 { font-size: clamp(2.2rem, 7vw, 4.4rem); margin: 0 0 26px; }
+.final-card .scene { height: clamp(260px, 48vw, 460px); margin: 40px -24px 0; background: var(--paper);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 40%); mask-image: linear-gradient(180deg, transparent, #000 40%); }
+.final-card .scene img { width: 100%; height: 100%; object-fit: cover; object-position: center 60%; display: block;
+  filter: grayscale(1) contrast(1.2); mix-blend-mode: multiply; }
+.plates-credit { font-size: .66rem; color: var(--muted); line-height: 1.7; max-width: var(--max); margin: 0 auto; padding: 0 var(--pad) 18px; }
+.plates-credit a { color: var(--bone-2); }
 
 /* ---------- trust table ---------- */
 .trust { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; margin-bottom: 96px; }
@@ -419,7 +477,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
 
     <!-- ============ LANDING / ANATOMY ============ -->
     <section class="route" data-route="/">
-      <div class="hero">
+      <div class="hero etched">
         <p class="kicker mono">Kiroween 2026 · Frankenstein</p>
         <h1 class="display">It's alive.<br /><em>Until it isn't.</em></h1>
         <p class="lede">
@@ -442,6 +500,12 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
         <div><span class="stat-num">0</span><span class="stat-label">shards held by DeadBolt</span></div>
         <div><span class="stat-num">14 days</span><span class="stat-label">grace before release</span></div>
       </div>
+
+      <figure class="plate" style="--pos: center 45%">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Giovanni_Aldini,_galvanism_experiments_Wellcome_L0007024.jpg/1280px-Giovanni_Aldini,_galvanism_experiments_Wellcome_L0007024.jpg" alt="1804 engraving of Giovanni Aldini's galvanism experiments on a dissected body" loading="lazy" onerror="this.closest('figure').classList.add('is-dead')" />
+        <p class="plate-quote">"A spark of being into the lifeless thing."</p>
+        <figcaption><span><b>Plate I</b> · Aldini's galvanic experiments, Paris 1804</span><span>The real science Mary Shelley read</span></figcaption>
+      </figure>
 
       <div class="section-head" id="anatomy">
         <p class="kicker mono">The anatomy</p>
@@ -484,6 +548,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
         </article>
       </div>
 
+      <div class="etched lifecycle-wrap">
       <div class="section-head">
         <p class="kicker mono">The experiment</p>
         <h2 class="display">Four states. One direction.</h2>
@@ -494,6 +559,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
         <li class="lc lc-grace"><span class="lc-n mono">03</span><h4>Grace</h4><p>You have 14 days to tap once and undo everything.</p></li>
         <li class="lc lc-rise"><span class="lc-n mono">04</span><h4>Resurrection</h4><p>The clock opens shard C. Your heir adds shard A and the secret lives again.</p></li>
       </ol>
+      </div>
 
       <div class="section-head">
         <p class="kicker mono">Who holds the parts</p>
@@ -507,15 +573,17 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
         <p class="trust-foot mono">Invariant: before release, no single party holds 2 shards. DeadBolt's servers hold 0.</p>
       </div>
 
-      <div class="final-cta">
+      <div class="final-card">
+        <p class="kicker mono">Nevermore</p>
         <h2 class="display">Some things are meant<br />to outlast you.</h2>
         <a class="btn btn-volt" href="#/table">Bring it to life</a>
+        <div class="scene"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Paul_Gustave_Dore_Raven1.jpg/1280px-Paul_Gustave_Dore_Raven1.jpg" alt="Gustave Doré engraving for Poe's The Raven, 1884" loading="lazy" onerror="this.parentElement.style.display='none'" /></div>
       </div>
     </section>
 
     <!-- ============ OPERATING TABLE (CREATE) ============ -->
     <section class="route" data-route="/table" hidden>
-      <div class="page-head">
+      <div class="page-head etched page-etch-table">
         <p class="kicker mono">The operating table</p>
         <h1 class="display">Assemble your creature.</h1>
         <p class="muted">Everything is encrypted in this browser. Your plaintext never leaves the page.</p>
@@ -600,7 +668,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
       </div>
 
       <div id="vitalsLive" hidden>
-        <div class="page-head row">
+        <div class="page-head row etched page-etch-vitals">
           <div>
             <p class="kicker mono">Vitals · <span id="vName">vault</span></p>
             <h1 class="display" id="vHeadline">Subject is alive.</h1>
@@ -670,7 +738,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
 
     <!-- ============ CLAIM (HEIR) ============ -->
     <section class="route" data-route="/claim" hidden>
-      <div class="page-head">
+      <div class="page-head etched page-etch-claim">
         <p class="kicker mono">The reading of the will</p>
         <h1 class="display">Raise what was left for you.</h1>
         <p class="muted">Bring your shard A. Once the clock releases shard C, the two together rebuild the key in this browser.</p>
@@ -707,6 +775,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
     </section>
   </main>
 
+  <p class="plates-credit mono">Plates, all public domain: Theodor von Holst, frontispiece to <i>Frankenstein</i> (1831) · Giovanni Aldini, <i>Essai sur le galvanisme</i> (1804), Wellcome Collection, CC BY 4.0 · <i>A Galvanised Corpse</i> (1836) · Gustave Doré, <i>The Raven</i> (1884). Via <a href="https://commons.wikimedia.org" rel="noopener">Wikimedia Commons</a>.</p>
   <footer class="foot mono">
     <span>DeadBolt · zero-custody digital succession</span>
     <span>Design prototype · client-side demo only, not production crypto custody</span>
