@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>DeadBolt — It's alive. Until it isn't.</title>
+  <meta name="description" content="DeadBolt stitches 1979 cryptography, a Web2 heartbeat and an on-chain clock into one creature that guards your keys while you live, and hands them to your heir when you don't." />
+  <meta name="theme-color" content="#07090a" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2307090a'/><path d='M6 17h5l2-6 4 12 3-9 2 3h4' fill='none' stroke='%239dff3a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+/* =========================================================
+   DeadBolt — "The Frankenstein Protocol" design system
+   Tokens: lab-black, bone, galvanic volt, stitch red.
+   No amber, no pumpkin orange: the horror here is 1818, not a party store.
+   ========================================================= */
+:root {
+  --bg: #07090a;
+  --bg-2: #0c110f;
+  --surface: #101614;
+  --surface-2: #151d1a;
+  --line: #22302a;
+  --line-2: #2f4038;
+  --bone: #ede6d6;
+  --bone-2: #c9c1ae;
+  --muted: #84907f;
+  --volt: #9dff3a;          /* galvanic green: life, current, success */
+  --volt-dim: #5f9a24;
+  --volt-glow: rgba(157, 255, 58, 0.35);
+  --stitch: #e5484d;        /* blood / alarm / grace */
+  --stitch-glow: rgba(229, 72, 77, 0.35);
+  --ether: #a99bff;         /* shard C: the chain clock, otherworldly */
+  --shard-a: #9dff3a;
+  --shard-b: #ede6d6;
+  --shard-c: #a99bff;
+
+  --f-display: "IM Fell English", "Iowan Old Style", Georgia, serif;
+  --f-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --r: 14px;
+  --r-sm: 9px;
+  --pad: clamp(18px, 4vw, 32px);
+  --max: 1120px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(157, 255, 58, 0.07), transparent 60%),
+    radial-gradient(900px 500px at -10% 30%, rgba(169, 155, 255, 0.05), transparent 60%),
+    var(--bg);
+  color: var(--bone);
+  font: 400 16px/1.6 var(--f-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+::selection { background: var(--volt); color: var(--bg); }
+a { color: inherit; }
+[hidden] { display: none !important; }
+
+.mono { font-family: var(--f-mono); letter-spacing: 0.02em; }
+.display { font-family: var(--f-display); font-weight: 400; letter-spacing: -0.01em; line-height: 1.05; }
+.muted { color: var(--muted); }
+.small { font-size: 0.86rem; }
+.kicker { color: var(--volt); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.18em; margin: 0 0 12px; }
+
+/* film grain + scanlines */
+.grain {
+  pointer-events: none; position: fixed; inset: 0; z-index: 50; opacity: 0.06; mix-blend-mode: overlay;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.5) 0 1px, transparent 1px 3px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.flash { pointer-events: none; position: fixed; inset: 0; z-index: 60; background: #f4ffe6; opacity: 0; }
+.flash.go { animation: flash 900ms ease-out; }
+@keyframes flash { 0% { opacity: 0 } 8% { opacity: .9 } 16% { opacity: .1 } 24% { opacity: .7 } 100% { opacity: 0 } }
+
+/* ---------- top bar ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px var(--pad);
+  padding-top: max(12px, env(safe-area-inset-top));
+  background: rgba(7, 9, 10, 0.78);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font: 600 1.05rem var(--f-body); letter-spacing: -0.01em; }
+.brand-mark { width: 26px; height: 26px; fill: none; stroke: var(--volt); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 6px var(--volt-glow)); }
+.nav { display: flex; gap: 4px; margin-left: auto; }
+.nav a { text-decoration: none; color: var(--muted); font-size: 0.9rem; padding: 7px 12px; border-radius: 999px; transition: color .2s, background .2s; }
+.nav a:hover { color: var(--bone); }
+.nav a.on { color: var(--bg); background: var(--bone); }
+.demo-pill {
+  display: flex; align-items: center; gap: 8px; border: 1px dashed var(--line-2); background: transparent;
+  color: var(--bone-2); font: 500 0.72rem var(--f-mono); padding: 7px 11px; border-radius: 999px; cursor: pointer;
+}
+.demo-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--volt); box-shadow: 0 0 8px var(--volt); animation: blink 1.6s infinite; }
+.demo-pill.off .dot { background: var(--muted); box-shadow: none; animation: none; }
+
+@media (max-width: 760px) {
+  .topbar { flex-wrap: wrap; gap: 10px; }
+  .nav { order: 3; width: 100%; margin: 0; justify-content: space-between; }
+  .nav a { flex: 1; text-align: center; padding: 7px 4px; font-size: 0.84rem; }
+  .demo-pill { margin-left: auto; }
+}
+
+main { max-width: var(--max); margin: 0 auto; padding: 0 var(--pad) 80px; }
+.route { animation: rise .45s ease both; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font: 600 0.95rem var(--f-body); text-decoration: none; cursor: pointer;
+  padding: 13px 22px; border-radius: 999px; border: 1px solid transparent;
+  transition: transform .15s, box-shadow .2s, background .2s, opacity .2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn-volt { background: var(--volt); color: #071003; box-shadow: 0 0 0 0 var(--volt-glow); }
+.btn-volt:hover:not(:disabled) { box-shadow: 0 0 28px 2px var(--volt-glow); }
+.btn-ghost { background: transparent; color: var(--bone); border-color: var(--line-2); }
+.btn-ghost:hover:not(:disabled) { border-color: var(--bone-2); }
+.btn.wide { width: 100%; }
+.link-btn { background: none; border: 0; color: var(--volt); cursor: pointer; padding: 6px 0; font-size: 0.8rem; text-decoration: underline; text-underline-offset: 3px; }
+.link-btn.danger { color: var(--stitch); margin-top: 14px; }
+.chip-btn { background: var(--surface-2); border: 1px solid var(--line-2); color: var(--bone-2); font: 500 0.78rem var(--f-mono); padding: 8px 12px; border-radius: 999px; cursor: pointer; }
+.chip-btn.on { background: var(--volt); color: #071003; border-color: var(--volt); }
+.chip-btn:hover { border-color: var(--bone-2); }
+
+/* ---------- hero ---------- */
+.hero { padding: clamp(48px, 10vw, 110px) 0 36px; position: relative; }
+.hero h1 { font-size: clamp(3rem, 11vw, 7.2rem); margin: 0 0 22px; }
+.hero h1 em { color: var(--volt); font-style: italic; text-shadow: 0 0 30px var(--volt-glow); }
+.lede { max-width: 640px; font-size: clamp(1.02rem, 2.2vw, 1.18rem); color: var(--bone-2); margin: 0 0 30px; }
+.lede strong { color: var(--bone); font-weight: 600; }
+.hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+.hero-monitor { margin-top: 46px; border: 1px solid var(--line); border-radius: var(--r); background: linear-gradient(180deg, rgba(157,255,58,.03), transparent); overflow: hidden; position: relative; }
+.hero-monitor canvas { width: 100%; height: 120px; display: block; }
+.hero-monitor-label { position: absolute; left: 14px; top: 10px; font-size: 0.68rem; color: var(--volt); letter-spacing: .14em; }
+.blink { animation: blink 1.2s infinite; }
+@keyframes blink { 50% { opacity: .15 } }
+
+.stat-strip { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: var(--r); margin: 8px 0 80px; }
+.stat-strip > div { padding: 20px 18px; display: flex; flex-direction: column; gap: 4px; }
+.stat-strip > div + div { border-left: 1px dashed var(--line-2); }
+.stat-num { font: 400 clamp(1.6rem, 5vw, 2.4rem) var(--f-display); }
+.stat-label { color: var(--muted); font-size: 0.84rem; }
+@media (max-width: 600px) {
+  .stat-strip { grid-template-columns: 1fr; }
+  .stat-strip > div + div { border-left: 0; border-top: 1px dashed var(--line-2); }
+}
+
+.section-head { max-width: 680px; margin: 0 0 30px; }
+.section-head h2 { font-size: clamp(2.1rem, 6vw, 3.6rem); margin: 0 0 12px; }
+
+/* ---------- anatomy (stitched organs) ---------- */
+.anatomy { display: grid; grid-template-columns: 1fr 22px 1fr 22px 1fr; align-items: stretch; margin-bottom: 96px; }
+.organ { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 24px; position: relative; transition: border-color .25s, transform .25s; }
+.organ:hover { border-color: var(--volt-dim); transform: translateY(-3px); }
+.organ-tag { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .14em; }
+.organ-art { width: 100%; height: 110px; margin: 10px 0 6px; fill: none; stroke: var(--bone-2); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.organ-art .thin { stroke-width: 1.1; stroke-dasharray: 3 3; opacity: .7; }
+.organ-art .volt-stroke { stroke: var(--volt); stroke-dasharray: none; opacity: 1; filter: drop-shadow(0 0 4px var(--volt-glow)); }
+.organ h3 { font: 400 1.9rem var(--f-display); margin: 4px 0 0; }
+.organ-sub { color: var(--volt); font-size: 0.75rem; margin: 4px 0 12px; }
+.organ p:last-child { color: var(--bone-2); font-size: 0.95rem; margin: 0; }
+/* the stitch: a seam of cross-stitches binding neighbouring panels */
+.seam { position: relative; }
+.seam::before {
+  content: ""; position: absolute; inset: 18% 0; margin: auto;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 6px, var(--stitch) 6px 8px, transparent 8px 18px);
+  width: 2px; left: 0; right: 0;
+}
+.seam::after {
+  content: ""; position: absolute; inset: 18% 0;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 4px, rgba(229,72,77,.85) 4px 6px, transparent 6px 18px);
+  -webkit-mask: linear-gradient(90deg, transparent 2px, #000 2px calc(100% - 2px), transparent calc(100% - 2px));
+          mask: linear-gradient(90deg, transparent 2px, #000 2px calc(100% - 2px), transparent calc(100% - 2px));
+  transform: skewY(-28deg);
+}
+@media (max-width: 860px) {
+  .anatomy { grid-template-columns: 1fr; grid-template-rows: auto 26px auto 26px auto; }
+  .seam::before { inset: 0 20%; width: auto; height: 2px; top: 0; bottom: 0;
+    background: repeating-linear-gradient(90deg, transparent 0 6px, var(--stitch) 6px 8px, transparent 8px 18px); }
+  .seam::after { inset: 0 20%; transform: skewX(-28deg);
+    background: repeating-linear-gradient(90deg, transparent 0 4px, rgba(229,72,77,.85) 4px 6px, transparent 6px 18px);
+    -webkit-mask: linear-gradient(180deg, transparent 2px, #000 2px calc(100% - 2px), transparent calc(100% - 2px));
+            mask: linear-gradient(180deg, transparent 2px, #000 2px calc(100% - 2px), transparent calc(100% - 2px)); }
+}
+
+/* ---------- lifecycle ---------- */
+.lifecycle { list-style: none; padding: 0; margin: 0 0 96px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; counter-reset: lc; }
+.lc { border-top: 2px solid var(--line-2); padding: 18px 4px 0; }
+.lc-n { font-size: 0.72rem; color: var(--muted); }
+.lc h4 { font: 400 1.6rem var(--f-display); margin: 6px 0 6px; }
+.lc p { margin: 0; color: var(--bone-2); font-size: 0.92rem; }
+.lc-alive { border-color: var(--volt); }
+.lc-alive h4 { color: var(--volt); }
+.lc-flat { border-color: var(--bone-2); }
+.lc-grace { border-color: var(--stitch); }
+.lc-grace h4 { color: var(--stitch); }
+.lc-rise { border-color: var(--ether); }
+.lc-rise h4 { color: var(--ether); }
+@media (max-width: 760px) { .lifecycle { grid-template-columns: 1fr 1fr; } }
+
+/* ---------- trust table ---------- */
+.trust { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; margin-bottom: 96px; }
+.trust-row { display: grid; grid-template-columns: 70px 1.2fr 1.4fr; gap: 14px; padding: 16px 18px; align-items: center; border-top: 1px solid var(--line); font-size: 0.95rem; }
+.trust-head { border-top: 0; font-size: 0.7rem; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); background: var(--bg-2); }
+.trust-foot { margin: 0; padding: 14px 18px; border-top: 1px dashed var(--line-2); color: var(--volt); font-size: 0.78rem; background: rgba(157,255,58,.04); }
+@media (max-width: 640px) {
+  .trust-row { grid-template-columns: 44px 1fr; }
+  .trust-row > :nth-child(3) { grid-column: 2; font-size: 0.86rem; margin-top: -8px; }
+  .trust-head > :nth-child(3) { display: none; }
+}
+
+.shard-chip {
+  display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 7px;
+  font: 600 0.8rem var(--f-mono); color: #071003; flex: none; vertical-align: middle;
+}
+.shard-chip.a { background: var(--shard-a); }
+.shard-chip.b { background: var(--shard-b); }
+.shard-chip.c { background: var(--shard-c); }
+
+.final-cta { text-align: center; padding: 60px 0 20px; border-top: 1px dashed var(--line-2); }
+.final-cta h2 { font-size: clamp(2.2rem, 7vw, 4.4rem); margin: 0 0 26px; }
+
+/* ---------- page heads / panels ---------- */
+.page-head { padding: clamp(36px, 7vw, 70px) 0 24px; }
+.page-head h1 { font-size: clamp(2.4rem, 8vw, 4.6rem); margin: 0 0 10px; }
+.page-head.row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: clamp(20px, 4vw, 34px); }
+fieldset { border: 0; padding: 0; margin: 0; }
+legend { font-size: clamp(1.7rem, 5vw, 2.4rem); margin-bottom: 20px; padding: 0; }
+.field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.field > span { font-size: 0.86rem; color: var(--bone-2); display: flex; align-items: center; gap: 8px; }
+input, textarea {
+  width: 100%; background: var(--bg-2); border: 1px solid var(--line-2); color: var(--bone);
+  border-radius: var(--r-sm); padding: 13px 14px; font: 400 16px var(--f-body); resize: vertical;
+  transition: border-color .2s, box-shadow .2s;
+}
+textarea.mono { font-family: var(--f-mono); font-size: 14px; }
+input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-shadow: 0 0 0 3px rgba(157,255,58,.12); }
+.note { display: flex; gap: 10px; align-items: center; background: var(--bg-2); border: 1px dashed var(--line-2); border-radius: var(--r-sm); padding: 12px 14px; font-size: 0.9rem; color: var(--bone-2); margin: 6px 0 0; }
+
+.stepper { list-style: none; padding: 0; margin: 0 0 18px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: .12em; }
+.stepper li { color: var(--muted); border-top: 2px solid var(--line-2); padding-top: 8px; transition: color .3s, border-color .3s; }
+.stepper li.on { color: var(--volt); border-color: var(--volt); }
+.stepper li.done { color: var(--bone-2); border-color: var(--bone-2); }
+
+.choice-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.choice { position: relative; cursor: pointer; }
+.choice input { position: absolute; opacity: 0; pointer-events: none; }
+.choice span { display: block; text-align: center; border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 14px 6px; color: var(--bone-2); background: var(--bg-2); transition: all .2s; }
+.choice span b { font: 400 1.6rem var(--f-display); color: var(--bone); display: block; line-height: 1; }
+.choice input:checked + span { border-color: var(--volt); color: var(--volt); box-shadow: inset 0 0 0 1px var(--volt), 0 0 20px rgba(157,255,58,.1); }
+.choice input:focus-visible + span { outline: 2px solid var(--volt); outline-offset: 2px; }
+
+.form-nav { display: flex; justify-content: space-between; margin-top: 26px; gap: 12px; }
+
+/* stitch / split visual */
+.stitch-stage { position: relative; padding: 4px 0 0; }
+.core { margin: 0 auto; width: min(100%, 360px); text-align: center; border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 12px; background: var(--bg-2); display: flex; flex-direction: column; gap: 4px; font-size: 0.74rem; transition: box-shadow .4s, border-color .4s; }
+.core code { color: var(--bone); word-break: break-all; font-size: 0.72rem; }
+.core.charged { border-color: var(--volt); box-shadow: 0 0 40px var(--volt-glow); }
+.bolts { width: 100%; height: 70px; display: block; }
+.bolts path { fill: none; stroke: var(--line-2); stroke-width: 1.5; stroke-dasharray: 4 5; }
+.stitch-stage.live .bolts path { stroke: var(--volt); stroke-dasharray: 300; stroke-dashoffset: 300; animation: draw .7s ease forwards; filter: drop-shadow(0 0 4px var(--volt)); }
+.stitch-stage.live .bolts path:nth-child(2) { animation-delay: .12s; }
+.stitch-stage.live .bolts path:nth-child(3) { animation-delay: .24s; }
+@keyframes draw { to { stroke-dashoffset: 0 } }
+.shards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.shard { background: var(--bg-2); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem; opacity: .45; transform: translateY(6px); transition: all .5s; min-width: 0; }
+.shard code { font: 0.66rem var(--f-mono); color: var(--muted); word-break: break-all; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.stitch-stage.live .shard { opacity: 1; transform: none; }
+.stitch-stage.live .shard[data-s="b"] { transition-delay: .15s; }
+.stitch-stage.live .shard[data-s="c"] { transition-delay: .3s; }
+@media (max-width: 560px) { .shards { grid-template-columns: 1fr; } .bolts { height: 40px; } }
+
+/* ---------- vitals ---------- */
+.empty { text-align: center; padding: 100px 0; }
+.empty h1 { font-size: clamp(2.4rem, 8vw, 4rem); margin: 0 0 10px; }
+.empty .btn { margin-top: 18px; }
+
+.state-badge { font-size: 0.78rem; letter-spacing: .16em; padding: 8px 14px; border-radius: 999px; border: 1px solid currentColor; color: var(--volt); }
+.state-badge.FLATLINE { color: var(--bone); }
+.state-badge.GRACE { color: var(--stitch); animation: blink 1s infinite; }
+.state-badge.RELEASED { color: var(--ether); }
+
+.monitor { position: relative; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background:
+  linear-gradient(rgba(157,255,58,.04) 1px, transparent 1px) 0 0 / 100% 24px,
+  linear-gradient(90deg, rgba(157,255,58,.04) 1px, transparent 1px) 0 0 / 24px 100%,
+  #050807; margin-bottom: 16px; transition: border-color .4s; }
+.monitor.GRACE { border-color: rgba(229,72,77,.5); box-shadow: inset 0 0 60px rgba(229,72,77,.08); }
+.monitor.RELEASED { border-color: rgba(169,155,255,.5); }
+.monitor canvas { width: 100%; height: 180px; display: block; }
+.monitor-hud { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); }
+.monitor-hud > div { padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.monitor-hud > div + div { border-left: 1px solid var(--line); }
+.monitor-hud small { color: var(--muted); font-size: 0.64rem; text-transform: uppercase; letter-spacing: .12em; }
+.monitor-hud b { font-weight: 600; font-size: 0.95rem; }
+
+.vitals-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; min-width: 0; }
+.card.wide { grid-column: 1 / -1; }
+.card-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: .16em; color: var(--muted); margin: 0 0 16px; font-weight: 500; }
+@media (max-width: 760px) { .vitals-grid { grid-template-columns: 1fr; } }
+
+.pulse-card { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px; }
+.pulse-btn {
+  position: relative; width: 150px; height: 150px; border-radius: 50%; border: 0; cursor: pointer;
+  background: radial-gradient(circle at 35% 30%, #c8ff86, var(--volt) 45%, var(--volt-dim));
+  color: #071003; font: 400 1.5rem var(--f-display); box-shadow: 0 0 40px var(--volt-glow);
+  -webkit-tap-highlight-color: transparent; transition: transform .15s, filter .3s;
+}
+.pulse-btn:active { transform: scale(.94); }
+.pulse-ring { position: absolute; inset: -10px; border-radius: 50%; border: 2px solid var(--volt); opacity: 0; animation: ring 2.4s infinite; }
+@keyframes ring { 0% { transform: scale(.85); opacity: .8 } 100% { transform: scale(1.35); opacity: 0 } }
+.pulse-btn.urgent { background: radial-gradient(circle at 35% 30%, #ff9a9d, var(--stitch) 50%, #8f1f23); color: #fff; box-shadow: 0 0 50px var(--stitch-glow); }
+.pulse-btn.urgent .pulse-ring { border-color: var(--stitch); animation-duration: 1s; }
+.pulse-btn:disabled { filter: grayscale(1) brightness(.5); cursor: not-allowed; box-shadow: none; }
+.pulse-btn:disabled .pulse-ring { display: none; }
+
+.track { position: relative; height: 12px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line-2); overflow: hidden; }
+.track-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--volt-dim), var(--volt)); }
+.track-grace { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(45deg, rgba(229,72,77,.25) 0 6px, transparent 6px 12px); }
+.track-cursor { position: absolute; top: -3px; bottom: -3px; width: 3px; background: var(--bone); box-shadow: 0 0 10px var(--bone); }
+.track-legend { display: flex; justify-content: space-between; font-size: 0.64rem; color: var(--muted); margin-top: 8px; text-transform: uppercase; letter-spacing: .1em; }
+.steps-mini { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 16px; font-size: 0.66rem; text-transform: uppercase; letter-spacing: .08em; text-align: center; }
+.steps-mini span { padding: 7px 2px; border-radius: 6px; border: 1px solid var(--line-2); color: var(--muted); }
+.steps-mini span.on[data-st="ALIVE"] { color: #071003; background: var(--volt); border-color: var(--volt); }
+.steps-mini span.on[data-st="FLATLINE"] { color: var(--bg); background: var(--bone); border-color: var(--bone); }
+.steps-mini span.on[data-st="GRACE"] { color: #fff; background: var(--stitch); border-color: var(--stitch); }
+.steps-mini span.on[data-st="RELEASED"] { color: #0b0820; background: var(--ether); border-color: var(--ether); }
+
+.shard-map { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.shard-map li { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; }
+.shard-map em { margin-left: auto; font-style: normal; font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
+.shard-map em.hot { color: var(--ether); }
+
+.warp { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.log { list-style: none; padding: 0; margin: 0; max-height: 220px; overflow: auto; font-size: 0.78rem; display: flex; flex-direction: column-reverse; gap: 8px; }
+.log li { display: grid; grid-template-columns: 74px 1fr; gap: 10px; color: var(--bone-2); }
+.log li time { color: var(--muted); }
+.log li.v { color: var(--volt); } .log li.r { color: var(--stitch); } .log li.e { color: var(--ether); }
+
+/* ---------- claim ---------- */
+.claim { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 20px; align-items: start; }
+@media (max-width: 760px) { .claim { grid-template-columns: 1fr; } }
+.tomb {
+  position: relative; min-height: 300px; border-radius: 160px 160px 14px 14px;
+  background: linear-gradient(180deg, #2a302d, #171c1a 70%); border: 1px solid var(--line-2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 50px 24px 34px;
+  box-shadow: inset 0 -30px 60px rgba(0,0,0,.5), 0 30px 60px -30px rgba(0,0,0,.8); overflow: hidden;
+}
+.tomb::after { content: ""; position: absolute; left: -10%; right: -10%; bottom: -1px; height: 40px; background: radial-gradient(60% 100% at 50% 100%, #0a0f0c, transparent); }
+.tomb-top { font-size: 0.7rem; letter-spacing: .3em; color: var(--muted); }
+.tomb-name { font-size: clamp(1.8rem, 5vw, 2.6rem); margin: 12px 0; color: var(--bone); }
+.tomb-meta { font-size: 0.72rem; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; }
+.tomb-crack { position: absolute; inset: 0; opacity: 0; transition: opacity .4s;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 300' preserveAspectRatio='none'%3E%3Cpath d='M100 0 L92 60 L112 95 L88 150 L108 200 L96 300' fill='none' stroke='%23a99bff' stroke-width='2'/%3E%3C/svg%3E") center/100% 100% no-repeat;
+  filter: drop-shadow(0 0 6px var(--ether)); }
+.tomb.open .tomb-crack { opacity: 1; }
+.tomb.open { border-color: rgba(169,155,255,.5); }
+.tomb.open .tomb-meta { color: var(--ether); }
+.tomb.risen { animation: shake .5s; }
+@keyframes shake { 20%,60% { transform: translateX(-4px) } 40%,80% { transform: translateX(4px) } }
+
+.released { background: var(--bg-2); border: 1px dashed var(--line-2); border-radius: var(--r-sm); padding: 13px 14px; font-size: 0.8rem; color: var(--muted); word-break: break-all; }
+.released.hot { color: var(--ether); border-style: solid; border-color: rgba(169,155,255,.5); }
+.claim-error { color: var(--stitch); font-size: 0.8rem; min-height: 1.2em; margin: 12px 0 0; }
+
+.reveal { margin-top: 24px; border: 1px solid var(--volt); border-radius: var(--r); padding: 26px; background: rgba(157,255,58,.04); box-shadow: 0 0 60px rgba(157,255,58,.08); animation: rise .6s ease both; }
+.reveal-text { white-space: pre-wrap; word-break: break-word; font-size: 1rem; color: var(--bone); margin: 0 0 12px; line-height: 1.7; }
+
+/* ---------- footer / toast ---------- */
+.foot { max-width: var(--max); margin: 0 auto; padding: 24px var(--pad) calc(24px + env(safe-area-inset-bottom)); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 0.7rem; color: var(--muted); border-top: 1px solid var(--line); }
+.toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); background: var(--bone); color: var(--bg); padding: 11px 18px; border-radius: 999px; font-size: 0.8rem; opacity: 0; pointer-events: none; transition: all .3s; z-index: 70; max-width: 90vw; text-align: center; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+</style>
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="flash" id="flash" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a href="#/" class="brand" aria-label="DeadBolt home">
+      <svg viewBox="0 0 32 32" class="brand-mark" aria-hidden="true"><path d="M3 17h6l2.5-7 5 14 3.5-10 2 3H29" /></svg>
+      <span>DeadBolt</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="#/" data-nav="/">Anatomy</a>
+      <a href="#/table" data-nav="/table">Operate</a>
+      <a href="#/vitals" data-nav="/vitals">Vitals</a>
+      <a href="#/claim" data-nav="/claim">Claim</a>
+    </nav>
+    <button class="demo-pill" id="demoPill" type="button" title="Demo mode compresses time so the full lifecycle plays out in under a minute">
+      <span class="dot"></span><span id="demoPillLabel">Demo · 1 day = 1 s</span>
+    </button>
+  </header>
+
+  <main id="app">
+
+    <!-- ============ LANDING / ANATOMY ============ -->
+    <section class="route" data-route="/">
+      <div class="hero">
+        <p class="kicker mono">Kiroween 2026 · Frankenstein</p>
+        <h1 class="display">It's alive.<br /><em>Until it isn't.</em></h1>
+        <p class="lede">
+          DeadBolt stitches three technologies that were never meant to touch: <strong>1979 cryptography</strong>,
+          a <strong>Web2 heartbeat</strong> and an <strong>on-chain clock</strong>. Together they guard your keys while you
+          live and hand them to your heir when you don't. No lawyer reads them, and no server decides you're gone.
+        </p>
+        <div class="hero-ctas">
+          <a class="btn btn-volt" href="#/table">Enter the lab</a>
+          <a class="btn btn-ghost" href="#anatomy">See the anatomy</a>
+        </div>
+        <div class="hero-monitor" aria-hidden="true">
+          <canvas id="heroEcg" height="120"></canvas>
+          <div class="hero-monitor-label mono"><span class="blink">●</span> SUBJECT ALIVE · LAST PULSE 0d AGO</div>
+        </div>
+      </div>
+
+      <div class="stat-strip">
+        <div><span class="stat-num">2-of-3</span><span class="stat-label">shards rebuild your secret</span></div>
+        <div><span class="stat-num">0</span><span class="stat-label">shards held by DeadBolt</span></div>
+        <div><span class="stat-num">14 days</span><span class="stat-label">grace before release</span></div>
+      </div>
+
+      <div class="section-head" id="anatomy">
+        <p class="kicker mono">The anatomy</p>
+        <h2 class="display">One creature, three stolen parts.</h2>
+        <p class="muted">Mary Shelley stitched a body in 1818. We stitched a protocol. Each part is useless alone; sewn together, they do something none of them can do on their own.</p>
+      </div>
+
+      <div class="anatomy">
+        <article class="organ">
+          <div class="organ-tag mono">Part I · 1979</div>
+          <svg class="organ-art" viewBox="0 0 120 90" aria-hidden="true">
+            <path d="M60 10c-22 0-38 13-38 32 0 10 5 17 11 21v14h54V63c6-4 11-11 11-21 0-19-16-32-38-32Z" />
+            <path d="M60 12v62M40 30c6 4 6 12 0 16M80 30c-6 4-6 12 0 16M46 58h28" class="thin" />
+          </svg>
+          <h3>The Brain</h3>
+          <p class="organ-sub mono">Shamir's Secret Sharing</p>
+          <p>Your vault key is split into three shards. Any two rebuild it, and one alone is mathematically meaningless noise. It's pure algebra from 1979, with no blockchain needed.</p>
+        </article>
+        <div class="seam" aria-hidden="true"></div>
+        <article class="organ">
+          <div class="organ-tag mono">Part II · Web2</div>
+          <svg class="organ-art" viewBox="0 0 120 90" aria-hidden="true">
+            <path d="M60 80S16 54 16 30c0-12 9-20 20-20 10 0 17 6 24 15 7-9 14-15 24-15 11 0 20 8 20 20 0 24-44 50-44 50Z" />
+            <path d="M24 40h18l5-10 8 20 6-14 4 4h31" class="thin volt-stroke" />
+          </svg>
+          <h3>The Heart</h3>
+          <p class="organ-sub mono">Email &amp; Telegram heartbeat</p>
+          <p>Every 30 days, a one-tap "I'm alive" link lands in your inbox or Telegram. No wallet or gas needed, so your mum could do it. Miss it, and the alarm starts.</p>
+        </article>
+        <div class="seam" aria-hidden="true"></div>
+        <article class="organ">
+          <div class="organ-tag mono">Part III · On-chain</div>
+          <svg class="organ-art" viewBox="0 0 120 90" aria-hidden="true">
+            <path d="M38 82V44c0-4 3-7 7-7s7 3 7 7V14c0-4 3-7 7-7s7 3 7 7v26c0-4 3-7 7-7s7 3 7 7v6c0-4 3-7 7-7s6 3 6 7v20c0 10-8 16-18 16H38Z" />
+            <path d="M44 60h44M44 68h44" class="thin" />
+          </svg>
+          <h3>The Hand</h3>
+          <p class="organ-sub mono">Time-locked release on a chain clock</p>
+          <p>The third shard sits behind a chain clock and opens only after the heartbeat <em>and</em> the grace period have both run out. No server and no admin key can open it early, not even ours.</p>
+        </article>
+      </div>
+
+      <div class="section-head">
+        <p class="kicker mono">The experiment</p>
+        <h2 class="display">Four states. One direction.</h2>
+      </div>
+      <ol class="lifecycle">
+        <li class="lc lc-alive"><span class="lc-n mono">01</span><h4>Alive</h4><p>You tap the pulse link and the timer resets. Nothing moves.</p></li>
+        <li class="lc lc-flat"><span class="lc-n mono">02</span><h4>Flatline</h4><p>A pulse is missed, and DeadBolt alerts you on every channel.</p></li>
+        <li class="lc lc-grace"><span class="lc-n mono">03</span><h4>Grace</h4><p>You have 14 days to tap once and undo everything.</p></li>
+        <li class="lc lc-rise"><span class="lc-n mono">04</span><h4>Resurrection</h4><p>The clock opens shard C. Your heir adds shard A and the secret lives again.</p></li>
+      </ol>
+
+      <div class="section-head">
+        <p class="kicker mono">Who holds the parts</p>
+        <h2 class="display">No one can rebuild it alone. Not even us.</h2>
+      </div>
+      <div class="trust">
+        <div class="trust-row trust-head mono"><span>Shard</span><span>Held by</span><span>What it can do alone</span></div>
+        <div class="trust-row"><span class="shard-chip a">A</span><span>Your heir: a sealed card you give them</span><span class="muted">Nothing. It sleeps until shard C wakes.</span></div>
+        <div class="trust-row"><span class="shard-chip b">B</span><span>You, in your own backup</span><span class="muted">Nothing. It lets you recover your vault while you're alive.</span></div>
+        <div class="trust-row"><span class="shard-chip c">C</span><span>Locked to the chain clock</span><span class="muted">Nothing until the deadline. Then it's public, by design.</span></div>
+        <p class="trust-foot mono">Invariant: before release, no single party holds 2 shards. DeadBolt's servers hold 0.</p>
+      </div>
+
+      <div class="final-cta">
+        <h2 class="display">Some things are meant<br />to outlast you.</h2>
+        <a class="btn btn-volt" href="#/table">Bring it to life</a>
+      </div>
+    </section>
+
+    <!-- ============ OPERATING TABLE (CREATE) ============ -->
+    <section class="route" data-route="/table" hidden>
+      <div class="page-head">
+        <p class="kicker mono">The operating table</p>
+        <h1 class="display">Assemble your creature.</h1>
+        <p class="muted">Everything is encrypted in this browser. Your plaintext never leaves the page.</p>
+      </div>
+
+      <ol class="stepper mono" id="stepper">
+        <li data-step="1" class="on">Secret</li>
+        <li data-step="2">Heir</li>
+        <li data-step="3">Pulse</li>
+        <li data-step="4">Stitch</li>
+      </ol>
+
+      <form class="panel" id="createForm" autocomplete="off" novalidate>
+        <!-- step 1 -->
+        <fieldset data-panel="1">
+          <legend class="display">What should outlive you?</legend>
+          <label class="field">
+            <span>The secret</span>
+            <textarea id="secret" rows="5" placeholder="Seed phrase, private key, a letter, the Wi-Fi password…" required></textarea>
+            <small class="muted">Encrypted with AES-256-GCM before anything else happens.</small>
+          </label>
+          <button type="button" class="link-btn mono" id="fillSample">Use a sample seed phrase</button>
+        </fieldset>
+
+        <!-- step 2 -->
+        <fieldset data-panel="2" hidden>
+          <legend class="display">Who receives it?</legend>
+          <label class="field"><span>Heir's name</span><input id="heirName" placeholder="Aisha Bello" required /></label>
+          <label class="field"><span>Heir's email</span><input id="heirEmail" type="email" placeholder="aisha@example.com" /></label>
+          <p class="note"><span class="shard-chip a">A</span> Your heir gets shard A as a printable card. On its own, it reveals nothing.</p>
+        </fieldset>
+
+        <!-- step 3 -->
+        <fieldset data-panel="3" hidden>
+          <legend class="display">How often must you prove you're alive?</legend>
+          <div class="choice-row" role="radiogroup" aria-label="Check-in interval">
+            <label class="choice"><input type="radio" name="interval" value="7" /><span><b>7</b> days</span></label>
+            <label class="choice"><input type="radio" name="interval" value="30" checked /><span><b>30</b> days</span></label>
+            <label class="choice"><input type="radio" name="interval" value="90" /><span><b>90</b> days</span></label>
+          </div>
+          <div class="choice-row" role="radiogroup" aria-label="Pulse channel">
+            <label class="choice"><input type="radio" name="channel" value="Email" checked /><span>Email</span></label>
+            <label class="choice"><input type="radio" name="channel" value="Telegram" /><span>Telegram</span></label>
+            <label class="choice"><input type="radio" name="channel" value="SMS" /><span>SMS</span></label>
+          </div>
+          <p class="note">Grace period: <b class="mono">14 days</b>. It's fixed on purpose: a single tap during grace undoes everything.</p>
+        </fieldset>
+
+        <!-- step 4 -->
+        <fieldset data-panel="4" hidden>
+          <legend class="display">Throw the switch.</legend>
+          <div class="stitch-stage" id="stitchStage">
+            <div class="core mono" id="coreBox">
+              <span class="muted">vault key</span>
+              <code id="keyPreview">—</code>
+            </div>
+            <svg class="bolts" viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M150 0 L50 120" /><path d="M150 0 L150 120" /><path d="M150 0 L250 120" />
+            </svg>
+            <div class="shards">
+              <div class="shard" data-s="a"><span class="shard-chip a">A</span><b>Heir</b><code>—</code></div>
+              <div class="shard" data-s="b"><span class="shard-chip b">B</span><b>You</b><code>—</code></div>
+              <div class="shard" data-s="c"><span class="shard-chip c">C</span><b>Chain clock</b><code>—</code></div>
+            </div>
+          </div>
+          <p class="muted small" id="stitchCaption">The key will be split into 3 shards. Any 2 rebuild it.</p>
+        </fieldset>
+
+        <div class="form-nav">
+          <button type="button" class="btn btn-ghost" id="backBtn" disabled>Back</button>
+          <button type="button" class="btn btn-volt" id="nextBtn">Next</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ============ VITALS (OWNER DASHBOARD) ============ -->
+    <section class="route" data-route="/vitals" hidden>
+      <div class="empty" id="vitalsEmpty">
+        <h1 class="display">The table is empty.</h1>
+        <p class="muted">No creature yet. Assemble one first.</p>
+        <a class="btn btn-volt" href="#/table">Go to the operating table</a>
+      </div>
+
+      <div id="vitalsLive" hidden>
+        <div class="page-head row">
+          <div>
+            <p class="kicker mono">Vitals · <span id="vName">vault</span></p>
+            <h1 class="display" id="vHeadline">Subject is alive.</h1>
+          </div>
+          <span class="state-badge mono" id="stateBadge">ALIVE</span>
+        </div>
+
+        <div class="monitor" id="monitor">
+          <canvas id="ecg" height="180"></canvas>
+          <div class="monitor-hud mono">
+            <div><small>next pulse due</small><b id="hudDue">—</b></div>
+            <div><small>since last pulse</small><b id="hudSince">—</b></div>
+            <div><small>channel</small><b id="hudChannel">—</b></div>
+          </div>
+        </div>
+
+        <div class="vitals-grid">
+          <div class="card pulse-card">
+            <button class="pulse-btn" id="pulseBtn" type="button">
+              <span class="pulse-ring"></span>
+              <span class="pulse-label">I'm alive</span>
+            </button>
+            <p class="muted small" id="pulseHint">One tap resets the timer. This is what your email or Telegram link does.</p>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title mono">Lifecycle</h3>
+            <div class="track" id="track">
+              <div class="track-fill" id="trackFill"></div>
+              <div class="track-grace" id="trackGrace"></div>
+              <div class="track-cursor" id="trackCursor"></div>
+            </div>
+            <div class="track-legend mono"><span>last pulse</span><span>grace</span><span>release</span></div>
+            <div class="steps-mini mono" id="stepsMini">
+              <span data-st="ALIVE">Alive</span><span data-st="FLATLINE">Flatline</span><span data-st="GRACE">Grace</span><span data-st="RELEASED">Resurrected</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title mono">Shard map</h3>
+            <ul class="shard-map">
+              <li><span class="shard-chip a">A</span> <span id="mapHeir">Heir</span><em class="mono">dormant</em></li>
+              <li><span class="shard-chip b">B</span> You<em class="mono">safe</em></li>
+              <li><span class="shard-chip c">C</span> Chain clock<em class="mono" id="mapC">locked</em></li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title mono">Time warp <span class="muted">(demo)</span></h3>
+            <div class="warp">
+              <button type="button" class="chip-btn" data-speed="0">Pause</button>
+              <button type="button" class="chip-btn" data-speed="1">1 day/s</button>
+              <button type="button" class="chip-btn" data-speed="5">5 days/s</button>
+              <button type="button" class="chip-btn" data-jump="grace">Skip to grace</button>
+              <button type="button" class="chip-btn" data-jump="release">Skip to release</button>
+            </div>
+            <button type="button" class="link-btn mono danger" id="resetVault">Destroy creature</button>
+          </div>
+
+          <div class="card wide">
+            <h3 class="card-title mono">Lab notebook</h3>
+            <ol class="log mono" id="log"></ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CLAIM (HEIR) ============ -->
+    <section class="route" data-route="/claim" hidden>
+      <div class="page-head">
+        <p class="kicker mono">The reading of the will</p>
+        <h1 class="display">Raise what was left for you.</h1>
+        <p class="muted">Bring your shard A. Once the clock releases shard C, the two together rebuild the key in this browser.</p>
+      </div>
+
+      <div class="claim">
+        <div class="tomb" id="tomb">
+          <div class="tomb-top mono">HERE RESTS</div>
+          <div class="tomb-name display" id="tombName">A sealed vault</div>
+          <div class="tomb-meta mono" id="tombMeta">shard C · locked</div>
+          <div class="tomb-crack" aria-hidden="true"></div>
+        </div>
+
+        <div class="panel claim-panel">
+          <label class="field">
+            <span><span class="shard-chip a">A</span> Your shard</span>
+            <textarea id="shardInput" rows="3" placeholder="DB1-1-…" class="mono"></textarea>
+          </label>
+          <button type="button" class="link-btn mono" id="pasteDemoShard">Paste the demo heir's shard</button>
+          <div class="field">
+            <span><span class="shard-chip c">C</span> Released shard</span>
+            <div class="released mono" id="releasedBox">Locked by the chain clock. Not yet released.</div>
+          </div>
+          <button type="button" class="btn btn-volt wide" id="claimBtn">Reanimate</button>
+          <p class="claim-error mono" id="claimError" role="alert"></p>
+        </div>
+      </div>
+
+      <div class="reveal" id="reveal" hidden>
+        <p class="kicker mono">It's alive</p>
+        <pre class="reveal-text mono" id="revealText"></pre>
+        <p class="muted small">Rebuilt from shards A + C and decrypted locally. DeadBolt never saw this.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot mono">
+    <span>DeadBolt · zero-custody digital succession</span>
+    <span>Design prototype · client-side demo only, not production crypto custody</span>
+  </footer>
+
+  <div class="toast mono" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
