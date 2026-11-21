@@ -434,6 +434,19 @@ $("#claimBtn").addEventListener("click", async () => {
   }
 });
 
+/* ---------------- motion: reveal on scroll ---------------- */
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+if ("IntersectionObserver" in window && !reduceMotion) {
+  const io = new IntersectionObserver(
+    (entries) => entries.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+    }),
+    { threshold: 0.22, rootMargin: "0px 0px -8% 0px" }
+  );
+  $$(".etched:not(.hero)").forEach((el) => { el.classList.add("dev"); io.observe(el); });
+  $$(".anatomy").forEach((el) => { el.classList.add("sew"); io.observe(el); });
+}
+
 /* ---------------- boot ---------------- */
 document.querySelector('a[href="#anatomy"]').addEventListener("click", (e) => {
   e.preventDefault();

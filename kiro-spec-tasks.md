@@ -72,4 +72,5 @@
 - [ ] 12. Add honest trust labels and the final pass
   - Trust labels on Create, Vitals and Claim exactly as in the design's trust-model table
   - Accessibility pass (tap targets, reduced motion, colour plus text for every state); screenshot every route for Devpost
-  - _Requirements: 6.4, 8.2–8.5_
+  - Motion pass: awakening, sewing, developing and the crack, verified under reduced motion
+  - _Requirements: 6.4, 8.2–8.6_

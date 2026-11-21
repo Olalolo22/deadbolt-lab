@@ -140,3 +140,4 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 3. All screens SHALL be usable at 390px wide with tap targets of at least 44px.
 4. WHEN the user prefers reduced motion THEN the system SHALL disable animations, including the lightning flash.
 5. Engravings SHALL use only public-domain sources, with credits in the footer.
+6. The system SHALL implement the four one-shot motions in the steering file (awakening, sewing, developing, the crack), and IF JavaScript or IntersectionObserver is unavailable THEN all content SHALL still be visible.

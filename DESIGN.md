@@ -53,6 +53,21 @@ Always inverted, so the ink glows bone-white on black. Never put them in boxed c
   never behind forms, the monitor or the controls.
 - If an image fails to load, the section must still read correctly on plain black.
 
+## Motion: only things coming to life
+
+Every animation is something waking up or being stitched together. Each plays once and uses only opacity,
+transform, filter, clip-path or SVG stroke. All of it switches off under `prefers-reduced-motion`.
+
+| Moment | Motion |
+| --- | --- |
+| Landing load | **Awakening:** the frontispiece is dark, flickers on twice like lightning (about 0.6 s and 1.1 s), then settles; the headline rises after it |
+| Anatomy scrolls in | **Sewing:** organs appear in order, and each red seam is sewn top to bottom in 9 stitch steps between them |
+| Any etched scene scrolls in | **Developing:** the engraving goes from faint, soft and low-contrast to sharp, like a print developing |
+| Shard C releases (claim) | **The crack:** a violet crack runs down the tombstone, then splinters into three branches |
+| Throw the switch / release / reveal | Full-screen lightning flash (reserved for these three moments only) |
+
+The ECG is the only thing that moves continuously. No parallax, cursor effects or looping decoration.
+
 ## Lifecycle state machine (copy must match)
 
 | State | Trigger | Headline | Colour |
