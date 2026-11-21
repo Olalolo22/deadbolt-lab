@@ -35,14 +35,14 @@ Three technologies that never normally touch, stitched into one app that does wh
 ## Plates (imagery)
 
 Public-domain 19th-century engravings, loaded from Wikimedia Commons and treated two ways:
-inverted into glowing etched backdrops, or printed as bone-paper "plates" with museum captions.
+inverted into glowing, full-bleed etched scenes. Pages you *feel* (landing, claim) are full-bleed; pages you *use* (create, vitals) stay black.
 
 - Theodor von Holst: frontispiece to *Frankenstein* (1831), as the hero backdrop
-- Giovanni Aldini: *Essai sur le galvanisme* (1804), Wellcome Collection, CC BY 4.0, as Plate I and the operating table
+- Giovanni Aldini: *Essai sur le galvanisme* (1804), Wellcome Collection, CC BY 4.0, as the quote scene and the operating table band
 - *A Galvanised Corpse* (1836), behind the lifecycle and Vitals
-- Gustave Doré: *The Raven* (1884), behind the claim page and the closing card
+- Gustave Doré: *The Raven* (1884), behind the claim page and the closing scene
 
-If an image fails to load, its plate hides itself and the page still works.
+If an image fails to load, the section still reads correctly on plain black.
 
 ## Run
 
@@ -60,5 +60,8 @@ python3 -m http.server 8000   # or: npx serve .
 index.html     all four screens + the full design system (inline CSS)
 shamir.js      Shamir's Secret Sharing over GF(2^8)
 app.js         router, lifecycle state machine, ECG monitor, create/vitals/claim flows
-DESIGN.md      design spec — drop into .kiro/steering/ in the main repo so Kiro builds to it
+DESIGN.md      design system → deadbolt/.kiro/steering/design-system.md
+kiro-spec-requirements.md  → deadbolt/.kiro/specs/deadbolt-ui/requirements.md
+kiro-spec-design.md        → deadbolt/.kiro/specs/deadbolt-ui/design.md
+kiro-spec-tasks.md         → deadbolt/.kiro/specs/deadbolt-ui/tasks.md
 ```

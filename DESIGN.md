@@ -41,6 +41,18 @@ Typography:
 - **Tombstone:** the heir's screen. A violet crack appears when shard C releases.
 - Grain + scanline overlay at ~6% opacity.
 
+## Imagery rule: pages you feel vs pages you use
+
+Public-domain 19th-century engravings only (von Holst 1831, Aldini 1804, *A Galvanised Corpse* 1836, Doré 1884).
+Always inverted, so the ink glows bone-white on black. Never put them in boxed cards or light paper panels.
+
+- **Pages you feel are full-bleed scenes:** the landing page and Claim. The image is the page, with a scrim behind the text.
+  On the landing page, scenes alternate with plain black content sections: hero (frontispiece) → stats →
+  Aldini quote scene → organs → lifecycle (corpse, faint) → custody table → closing scene (Raven) melting into the footer.
+- **Pages you use stay black:** the Operating Table and Vitals. Only a faint etched band behind the page title,
+  never behind forms, the monitor or the controls.
+- If an image fails to load, the section must still read correctly on plain black.
+
 ## Lifecycle state machine (copy must match)
 
 | State | Trigger | Headline | Colour |
