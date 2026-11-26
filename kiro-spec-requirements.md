@@ -23,7 +23,7 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 - **Shard A / B / C:** Shamir shares of the vault key. A goes to the heir, B to the owner, C to the chain clock.
 - **Pulse:** a check-in proving the owner is alive. It resets the timer.
 - **Interval:** days allowed between pulses (7, 30 or 90).
-- **Grace period:** a fixed 14 days after a missed pulse during which one pulse cancels release.
+- **Grace period:** a fixed 14 days that starts only after 3 missed check-ins in a row; one check-in during grace cancels the release.
 - **Release:** the moment shard C becomes available to the heir.
 - **Demo mode:** a simulated clock where 1 day passes per real second.
 
@@ -54,7 +54,7 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 2. WHEN the owner submits step 1 with an empty secret THEN the system SHALL block progress and show "Give the creature something to guard."
 3. WHEN the owner submits step 2 without an heir name THEN the system SHALL block progress and show "Name your heir."
 4. IF the owner enters a malformed heir email THEN the system SHALL block progress and show an inline error.
-5. Step 3 SHALL offer intervals of 7, 30 and 90 days (default 30) and channels Email, Telegram and SMS (default Email), and SHALL state that the grace period is a fixed 14 days.
+5. Step 3 SHALL offer intervals of 7, 30 and 90 days (default 30) and channels Email, Telegram and SMS (default Email), SHALL state the rule (3 missed check-ins, then a 14-day grace period), and SHALL show the worst case in days of total silence before any release.
 6. WHEN the owner taps "⚡ Throw the switch" THEN the system SHALL generate a random 256-bit key, encrypt the secret with AES-256-GCM, and split the key into three shards with a 2-of-3 threshold, all in the browser.
 7. WHEN the split completes THEN the system SHALL play the split animation (key core charges, three bolts draw, shards A, B and C appear) and trigger the lightning flash once.
 8. WHEN the split completes THEN the system SHALL discard the plaintext and the unsplit key from memory and clear the secret input.
@@ -86,9 +86,9 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 
 1. The system SHALL derive state only from `lastPulse`, `interval`, the 14-day grace period and the current clock time.
 2. WHEN now < lastPulse + interval THEN state SHALL be ALIVE with the headline "Subject is alive."
-3. WHEN lastPulse + interval ≤ now < lastPulse + interval + 1 day THEN state SHALL be FLATLINE with the headline "Pulse missed."
-4. WHEN the state is past FLATLINE and now < lastPulse + interval + 14 days THEN state SHALL be GRACE with the headline "Grace period. Tap to live."
-5. WHEN now ≥ lastPulse + interval + 14 days THEN state SHALL be RELEASED with the headline "It has risen."
+3. WHEN lastPulse + interval ≤ now < lastPulse + 3 × interval THEN state SHALL be FLATLINE with the headline "Check-in missed (n of 3)." A single missed check-in SHALL NEVER start the grace period or a release.
+4. WHEN lastPulse + 3 × interval ≤ now < lastPulse + 3 × interval + 14 days THEN state SHALL be GRACE with the headline "Grace period. Tap to live.", and alarms SHALL go out on every registered channel.
+5. WHEN now ≥ lastPulse + 3 × interval + 14 days THEN state SHALL be RELEASED with the headline "It has risen."
 6. RELEASED SHALL be terminal: no pulse can reverse it.
 7. WHEN the state changes THEN the system SHALL log the transition, and WHEN it becomes RELEASED the system SHALL trigger the lightning flash and a toast.
 
