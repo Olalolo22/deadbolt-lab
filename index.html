@@ -595,6 +595,28 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
   .hc-foot { font-size: 9pt; color: #444; }
 }
 
+/* ---------- outbox: the messages DeadBolt sends ---------- */
+.outbox { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.outbox details { border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--bg-2); }
+.outbox summary { cursor: pointer; list-style: none; padding: 12px 14px; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: baseline; }
+.outbox summary::-webkit-details-marker { display: none; }
+.outbox .ob-meta { grid-column: 1 / -1; font-size: .68rem; letter-spacing: .06em; color: var(--muted); }
+.outbox .ob-subject { grid-column: 1 / -1; font-size: .95rem; color: var(--bone); }
+.outbox .ob-subject.alarm { color: var(--stitch); }
+.outbox .ob-subject.heir { color: var(--ether); }
+.outbox-empty { margin: 0; }
+.mail { margin: 0 12px 12px; border-radius: 8px; background: #f6f2e8; color: #1d1b16; overflow: hidden; }
+.mail-head { padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,.1); font-size: .72rem; line-height: 1.7; color: #4a463d; overflow-wrap: anywhere; }
+.mail-head b { display: inline-block; width: 62px; color: #8a8474; font-weight: 500; }
+.mail-body { padding: 16px; font: 400 .95rem/1.6 var(--f-body); }
+.mail-body p { margin: 0 0 12px; }
+.mail-body ol { margin: 0 0 12px; padding-left: 20px; }
+.mail-btn { display: inline-block; margin: 2px 0 14px; padding: 10px 18px; border-radius: 999px; background: #1d1b16; color: #f6f2e8; text-decoration: none; font-weight: 600; font-size: .9rem; }
+.mail-btn.alarm { background: var(--stitch); color: #fff; }
+.mail-sign { color: #6b6556; }
+.mail-short { padding: 12px 16px; border-top: 1px dashed rgba(0,0,0,.15); font-size: .72rem; color: #4a463d; overflow-wrap: anywhere; }
+.mail-short p { margin: 0 0 6px; }
+
 /* ---------- heir invitation + heir-bound claim ---------- */
 .invite { max-width: 620px; margin: 0 auto; padding: clamp(36px, 8vw, 80px) 0 40px; text-align: center; display: flex; flex-direction: column; align-items: center; }
 .invite-letter { text-align: left; width: 100%; margin: 6px 0 24px; }
@@ -989,6 +1011,12 @@ details.breakglass > .muted { margin: 10px 0 14px; }
           <div class="card wide">
             <h3 class="card-title mono">Lab notebook</h3>
             <ol class="log mono" id="log"></ol>
+          </div>
+
+          <div class="card wide">
+            <h3 class="card-title mono">Outbox <span class="muted">(what DeadBolt has sent so far)</span></h3>
+            <p class="muted small outbox-empty" id="outboxEmpty">Nothing yet. DeadBolt stays quiet while you keep checking in.</p>
+            <ol class="outbox" id="outbox"></ol>
           </div>
         </div>
       </div>

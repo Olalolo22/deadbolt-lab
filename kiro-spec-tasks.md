@@ -75,6 +75,12 @@
   - `/pulse` check-in page with state-aware copy; API keys only from environment variables
   - _Requirements: 6a.1–6a.7_
 
+- [ ] 10b. Messages
+  - Templates for `r1`, `r2`, `grace`, `release` (owner copy in the Raven's voice; the heir notice gentle and plain)
+  - One message per event per check-in cycle; grace alarms daily on every channel
+  - Outbox on Vitals in demo mode
+  - _Requirements: 6b.1–6b.6_
+
 - [ ] 11. Implement pulse channels
   - Backend issues one-time pulse links per channel; tapping one relays `pulse()`; always offer a direct wallet pulse
   - Alarms on every channel when FLATLINE starts and daily during GRACE

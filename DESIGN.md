@@ -68,6 +68,16 @@ transform, filter, clip-path or SVG stroke. All of it switches off under `prefer
 
 The ECG is the only thing that moves continuously. No parallax, cursor effects or looping decoration.
 
+## Messages (the outbox)
+
+| When | To | Voice |
+| --- | --- | --- |
+| 1st and 2nd missed check-in | Owner, on their channel | The Raven, light: "Still with us? (1 of 3)" plus a one-tap "I'm alive" |
+| Grace period starts (then daily) | Owner, every channel | The Raven, firm: "Last warning: your vault opens for Aisha in 14 days" |
+| Release | Heir, by email | **No Raven, no jokes.** Gentle and plain: "Something was left for you", no rush, three steps |
+
+Messages never contain secrets, shards or the invitation code. The prototype shows them in an Outbox on Vitals.
+
 ## The heir's side
 
 The heir's card carries an invitation link (DeadBolt never sees it). Opening it shows a calm paper letter: "You've been

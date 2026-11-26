@@ -157,6 +157,19 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 6. The page copy SHALL follow the state: early ("Still with us?"), missed ("You missed a check-in", n of 3), GRACE ("This is your last warning", days left, in stitch red) and RELEASED ("Too late", button disabled).
 7. The Enoki API key and the Google client ID SHALL come from environment variables and SHALL NEVER be committed to the repo.
 
+### Requirement 6b: The messages DeadBolt sends
+
+**User Story:** As an owner, I want clear, timely nudges before anything happens, and as an heir, I want a kind, plain notice when something is left for me.
+
+#### Acceptance Criteria
+
+1. WHEN the 1st or 2nd check-in in a row is missed THEN the system SHALL send the owner a reminder on their chosen channel ("Still with us? (n of 3)") with a one-tap link to the check-in page.
+2. WHEN the grace period starts THEN the system SHALL send the owner a "last warning" on every channel on file, repeated daily until a check-in or the release.
+3. WHEN the vault is released THEN the system SHALL email the heir a gentle notice ("Something was left for you") with three plain steps and no humour. IF the heir never accepted THEN it SHALL point them to the break-glass route.
+4. Messages SHALL NEVER contain the secret, any shard or the invitation code.
+5. Owner messages MAY use the Raven's voice; the heir's notice SHALL NOT.
+6. The prototype SHALL show every sent message in an Outbox on Vitals, timestamped by vault day.
+
 ### Requirement 7: Demo mode
 
 **User Story:** As a hackathon judge, I want to watch the whole lifecycle in under two minutes, so that I can evaluate the product without waiting 44 days.

@@ -16,6 +16,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 let vault = load();
 if (vault && !vault.heir) vault.heir = { accepted: false, account: null, address: null };
 if (vault && !vault.inviteToken) vault.inviteToken = toHex(crypto.getRandomValues(new Uint8Array(16)));
+if (vault && !vault.outbox) vault.outbox = [];
 let demo = true;          // demo: 1 day per real second
 let speed = 1;            // days per real second when demo is on
 let lastFrame = performance.now();
@@ -153,6 +154,7 @@ function frame(now) {
     const st = stateOf(vault);
     if (st !== prevState) onTransition(prevState, st);
     prevState = st;
+    catchUpMessages(st);
     const m = missedCount(vault);
     if (st === "FLATLINE" && m > prevMissed && m > 1) log(`Missed check-in ${m} of ${MISSES_TO_GRACE}. Reminder sent via ${vault.channel}.`, "r");
     prevMissed = m;
@@ -328,6 +330,7 @@ async function throwSwitch() {
       owner,
       heir: { accepted: false, account: null, address: null },
       inviteToken: toHex(crypto.getRandomValues(new Uint8Array(16))),
+      outbox: [],
       log: [],
     };
     prevState = "ALIVE";
@@ -466,6 +469,9 @@ $("#resetVault").addEventListener("click", () => {
   renderVitals(true);
   revealed = false;
   lastSealed = null;
+  outboxKey = "";
+  $("#outbox").innerHTML = "";
+  $("#outboxEmpty").hidden = false;
   $("#sealForm").hidden = true;
   $("#reveal").hidden = true;
   $("#shardInput").value = "";
@@ -536,6 +542,101 @@ async function reanimate(pieces, how, verb) {
   $("#reveal").scrollIntoView({ behavior: "smooth", block: "center" });
   log(`${vault.heirName} rebuilt the key from ${how}.`, "e");
   revealed = true;
+}
+
+/* =========================================================
+   THE OUTBOX: the three messages DeadBolt sends, in the Raven's voice
+   (except the heir's notice: that one is gentle and plain, on purpose)
+   ========================================================= */
+let outboxKey = "";
+const MESSAGE_ORDER = ["r1", "r2", "grace", "release"];
+
+function sendMessage(kind) {
+  if (!vault) return;
+  vault.outbox = vault.outbox || [];
+  const cycle = vault.lastPulse;
+  if (vault.outbox.some((m) => m.cycle === cycle && m.kind === kind)) return;
+  const at = { r1: dueAt(vault), r2: dueAt(vault) + vault.interval * DAY, grace: graceAt(vault), release: releaseAt(vault) }[kind];
+  vault.outbox.push({ kind, cycle, t: at });
+}
+function catchUpMessages(st) {
+  if (!vault) return;
+  const upto = { ALIVE: -1, FLATLINE: missedCount(vault) >= 2 ? 1 : 0, GRACE: 2, RELEASED: 3 }[st];
+  for (let i = 0; i <= upto; i++) sendMessage(MESSAGE_ORDER[i]);
+  renderOutbox();
+}
+
+function messageFor(m) {
+  const e = escapeHtml;
+  const ownerAcct = vault.owner ? vault.owner.account : "the owner";
+  const heirFirst = vault.heirName.split(" ")[0];
+  const pulseUrl = `${location.origin}${location.pathname}#/pulse`;
+  const claimUrl = `${location.origin}${location.pathname}#/claim`;
+  if (m.kind === "r1" || m.kind === "r2") {
+    const n = m.kind === "r1" ? 1 : 2;
+    return {
+      from: "The Raven &lt;raven@deadbolt.example&gt;", to: e(ownerAcct), via: e(vault.channel),
+      subject: `Still with us? (${n} of 3)`, tone: "",
+      body: `<p>Hello from the Raven.</p>
+        <p>Your DeadBolt check-in was due on ${dayStamp(vault, m.cycle + n * vault.interval * DAY)}. Nothing has happened, and nothing will until you miss three in a row.${n === 2 ? " That's two now. One more and the grace period starts." : ""}</p>
+        <a class="mail-btn" href="#/pulse">I'm alive</a>
+        <p>One tap, signed by you. I can't do it for you, however much I'd like to.</p>
+        <p class="mail-sign">The Raven, DeadBolt's guide</p>`,
+      short: `DeadBolt: check-in ${n} of 3 missed. Nothing has happened yet. One tap to reset: ${e(pulseUrl)}`,
+    };
+  }
+  if (m.kind === "grace") {
+    return {
+      from: "The Raven &lt;raven@deadbolt.example&gt;", to: e(ownerAcct), via: "every channel on file, daily",
+      subject: `Last warning: your vault opens for ${e(vault.heirName)} in ${GRACE_DAYS} days`, tone: "alarm",
+      body: `<p>This is the Raven, and I'm not joking this time.</p>
+        <p>You've missed 3 check-ins in a row. On ${dayStamp(vault, releaseAt({ ...vault, lastPulse: m.cycle }))}, your vault opens for ${e(vault.heirName)}.</p>
+        <p>If you're alive, one tap stops everything:</p>
+        <a class="mail-btn alarm" href="#/pulse">I'm alive</a>
+        <p>If you're reading this on their behalf because something has happened to them, you don't need to do anything.</p>
+        <p>I'll send this every day until then, on every channel you gave us.</p>
+        <p class="mail-sign">The Raven</p>`,
+      short: `DeadBolt LAST WARNING: your vault opens for ${e(vault.heirName)} in ${GRACE_DAYS} days. If you're alive, tap now: ${e(pulseUrl)}`,
+    };
+  }
+  const accepted = vault.heir && vault.heir.accepted;
+  return {
+    from: "DeadBolt &lt;notices@deadbolt.example&gt;", to: e(accepted ? vault.heir.account : vault.heirEmail), via: "Email",
+    subject: "Something was left for you", tone: "heir",
+    body: `<p>Dear ${e(heirFirst)},</p>
+      <p>We're writing because ${e(ownerAcct)} used DeadBolt to leave you something private, and they haven't checked in for a long time. After three missed check-ins and ${GRACE_DAYS} days of warnings, it has now been released to you.</p>
+      <p>We're sorry if this comes at a hard time. There's no rush. It will wait for you.</p>
+      <p>When you're ready:</p>
+      <ol>
+        <li>Find the card they gave you.</li>
+        <li>Open ${e(claimUrl)}</li>
+        <li>Sign in with the Google account you accepted with, and follow the steps.</li>
+      </ol>
+      ${accepted ? "" : "<p>You never accepted the invitation on your card, so the usual route isn't open to you. Ask whoever holds their sealed backup (often their lawyer) about the break-glass route.</p>"}
+      <a class="mail-btn" href="#/claim">Open what they left</a>
+      <p class="mail-sign">DeadBolt</p>`,
+    short: "",
+  };
+}
+
+function renderOutbox() {
+  if (!vault) return;
+  const box = vault.outbox || [];
+  const key = `${vault.inviteToken}|${box.length}|${vault.heir && vault.heir.accepted}`;
+  if (key === outboxKey) return;
+  outboxKey = key;
+  $("#outboxEmpty").hidden = box.length > 0;
+  $("#outbox").innerHTML = [...box].sort((a, b) => b.t - a.t).map((m) => {
+    const msg = messageFor(m);
+    return `<li><details>
+      <summary><span class="ob-meta mono">${dayStamp(vault, m.t)} · ${msg.via} → ${msg.to}</span>
+      <span class="ob-subject ${msg.tone}">${msg.subject}</span></summary>
+      <div class="mail">
+        <div class="mail-head mono"><b>From</b>${msg.from}<br><b>To</b>${msg.to}<br><b>Subject</b>${msg.subject}</div>
+        <div class="mail-body">${msg.body}</div>
+        ${msg.short ? `<div class="mail-short mono"><p><b>Telegram / SMS version:</b></p><p>${msg.short}</p></div>` : ""}
+      </div></details></li>`;
+  }).join("");
 }
 
 /* =========================================================
@@ -732,7 +833,7 @@ function guideFor() {
     if (st === "ALIVE" && !vault.heir.accepted) return [`Steady heartbeat. ${vault.heirName}'s card has an invitation link on it. Let's see what she sees when she opens it.`, "Open the invitation", () => { location.hash = inviteHash(); }];
     if (st === "ALIVE") return ["Steady heartbeat. Now imagine you stop answering your check-ins. I'll skip ahead and show you what happens.", "Skip to a missed check-in",
       () => { vault.simNow = Math.max(vault.simNow, dueAt(vault) + 1000); }];
-    if (st === "FLATLINE") return ["You missed a check-in. I'm pecking at your inbox. Nothing happens until you've missed three in a row, and one tap resets it all.", "Miss all three",
+    if (st === "FLATLINE") return ["You missed a check-in, so I've sent you a reminder. It's in the outbox below. Nothing happens until you've missed three in a row.", "Miss all three",
       () => { vault.simNow = Math.max(vault.simNow, graceAt(vault) + 1000); }];
     if (st === "GRACE") return ["Three missed in a row. Grace period: 14 days of alarms on every channel. One tap undoes everything. Or…", "Let it lapse",
       () => { vault.simNow = Math.max(vault.simNow, releaseAt(vault) + 1000); }];
