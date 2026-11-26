@@ -595,6 +595,25 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
   .hc-foot { font-size: 9pt; color: #444; }
 }
 
+/* ---------- chain connection: reading / unreachable ---------- */
+.chain-banner { position: sticky; top: var(--hdr, 64px); z-index: 30; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 10px 16px; font-size: .74rem; line-height: 1.5; border-bottom: 1px solid var(--line-2); background: rgba(10,11,10,.94); backdrop-filter: blur(8px); color: var(--bone-2); }
+.chain-banner #chainMsg { flex: 1 1 220px; }
+.chain-banner .link-btn { padding: 0; }
+.chain-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ether); flex: none; animation: chainBlink 1s ease-in-out infinite; }
+.chain-banner.down { color: var(--bone); border-bottom-color: var(--stitch); background: rgba(40,12,13,.94); }
+.chain-banner.down .chain-dot { background: var(--stitch); animation: none; }
+@keyframes chainBlink { 50% { opacity: .25; } }
+@keyframes chainShimmer { 50% { opacity: .25; } }
+body[data-chain="reading"] .monitor-hud b,
+body[data-chain="reading"] #stateBadge,
+body[data-chain="reading"] #vHeadline,
+body[data-chain="reading"] #releasedBox { animation: chainShimmer 1s ease-in-out infinite; }
+body[data-chain="down"] #stateBadge::after { content: " · last seen"; opacity: .7; }
+.chip-btn.chain-cut.on { background: var(--stitch); border-color: var(--stitch); color: #fff; }
+@media (prefers-reduced-motion: reduce) { .chain-dot, body[data-chain="reading"] * { animation: none !important; } }
+
+.released.note { word-break: normal; overflow-wrap: break-word; }
+
 /* ---------- manage vault ---------- */
 .manage .mg-block { border-top: 1px solid var(--line-2); padding-top: 16px; margin-top: 16px; }
 .manage .mg-label { margin: 0 0 10px; font-size: .86rem; color: var(--bone-2); }
@@ -711,6 +730,10 @@ details.breakglass > .muted { margin: 10px 0 14px; }
   </header>
 
   <main id="app">
+    <div class="chain-banner mono" id="chainBanner" role="status" aria-live="polite" hidden>
+      <span class="chain-dot"></span><span id="chainMsg"></span>
+      <button type="button" class="link-btn mono" id="chainRetry" hidden>Try again</button>
+    </div>
 
     <!-- ============ LANDING / ANATOMY ============ -->
     <section class="route" data-route="/">
@@ -1021,6 +1044,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
               <button type="button" class="chip-btn" data-speed="5">5 days/s</button>
               <button type="button" class="chip-btn" data-jump="grace">Skip to grace</button>
               <button type="button" class="chip-btn" data-jump="release">Skip to release</button>
+              <button type="button" class="chip-btn chain-cut" id="chainToggle">Cut the chain</button>
             </div>
           </div>
 

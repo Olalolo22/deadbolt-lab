@@ -18,6 +18,7 @@ if (vault && !vault.heir) vault.heir = { accepted: false, account: null, address
 if (vault && !vault.inviteToken) vault.inviteToken = toHex(crypto.getRandomValues(new Uint8Array(16)));
 if (vault && !vault.outbox) vault.outbox = [];
 if (vault && !vault.retired) vault.retired = { cards: [], backups: [], invites: [] };
+if (vault && !vault.unseen) vault.unseen = 0; // chain time that passed while we couldn't read the chain
 let demo = true;          // demo: 1 day per real second
 let speed = 1;            // days per real second when demo is on
 let lastFrame = performance.now();
@@ -72,6 +73,8 @@ function route() {
   if (target === "/pulse") { pulsedHere = false; renderPulsePage(true); }
   if (target === "/invite") renderInvite(true);
   if (target === "/vitals") renderHeirStatus();
+  if (CHAIN_ROUTES.includes(target)) readChain();
+  else $("#chainBanner").hidden = true;
 }
 window.addEventListener("hashchange", route);
 
@@ -151,7 +154,11 @@ function frame(now) {
   lastFrame = now;
   if (vault) {
     const daysPerSec = demo ? speed : 1 / 86_400;
-    vault.simNow += dt * daysPerSec * DAY / 1000;
+    const adv = dt * daysPerSec * DAY / 1000;
+    // The chain's clock never stops. But while we can't read it, we keep showing the last thing it told us
+    // and bank the time we haven't seen yet, so a failure can never look like a release.
+    if (chain.status === "ok") vault.simNow += adv;
+    else vault.unseen = (vault.unseen || 0) + adv;
     const st = stateOf(vault);
     if (st !== prevState) onTransition(prevState, st);
     prevState = st;
@@ -179,6 +186,79 @@ function onTransition(from, to) {
   if (to === "ALIVE" && from !== "ALIVE") log("Subject revived. Timer reset.", "v");
   if (!$('[data-route="/claim"]').hidden) renderClaim();
 }
+
+/* =========================================================
+   THE CHAIN CONNECTION (simulated): reading → ok, or unreachable.
+   Rule: a failure never looks like a release. While the chain is quiet we show the last
+   state it reported, bank the time we haven't seen, and refuse anything that needs it.
+   ========================================================= */
+const CHAIN_ROUTES = ["/vitals", "/claim", "/pulse", "/invite"];
+const chain = { status: "ok", cut: false, timer: 0, logged: false };
+
+function setChain(status) {
+  chain.status = status;
+  document.body.dataset.chain = status;
+  const banner = $("#chainBanner");
+  banner.hidden = status === "ok" || !vault || !CHAIN_ROUTES.includes(curRoute());
+  banner.classList.toggle("down", status === "down");
+  $("#chainRetry").hidden = status !== "down";
+  $("#chainMsg").textContent = status === "reading"
+    ? "Reading your vault from the chain…"
+    : vault ? `Can't reach the chain. Showing what it last told us (${dayStamp(vault)}). Nothing is released, claimed or checked in on a guess.` : "";
+  if (vault && !$('[data-route="/claim"]').hidden) renderClaim();
+  if (!$('[data-route="/pulse"]').hidden) renderPulsePage(true);
+}
+
+function readChain() {
+  clearTimeout(chain.timer);
+  if (!vault) return setChain("ok");
+  setChain("reading");
+  chain.timer = setTimeout(() => {
+    if (!vault) return setChain("ok");
+    if (chain.cut) {
+      setChain("down");
+      if (!chain.logged) { chain.logged = true; log("Lost contact with the chain. Showing the last state it reported. Nothing is released or claimed on a guess.", "r"); }
+      return;
+    }
+    const caught = vault.unseen || 0;
+    vault.simNow += caught;
+    vault.unseen = 0;
+    setChain("ok");
+    if (chain.logged) {
+      chain.logged = false;
+      log(`Back in contact with the chain. Caught up ${Math.round(caught / DAY)} day${Math.round(caught / DAY) === 1 ? "" : "s"} we couldn't see.`, "v");
+    }
+    save();
+  }, chain.cut ? 1200 : 550);
+}
+
+function chainReady(what) {
+  if (chain.status === "ok") return true;
+  toast(chain.status === "reading"
+    ? "Still reading the chain. One moment."
+    : `Can't reach the chain, so ${what} wasn't sent. Nothing changed. Try again when it's back.`);
+  return false;
+}
+
+// time jumps move the chain's clock, even when we can't see it
+function jumpTo(t) {
+  if (!vault) return;
+  if (chain.status === "ok") vault.simNow = Math.max(vault.simNow, t);
+  else vault.unseen = Math.max(vault.unseen || 0, t - vault.simNow);
+}
+
+$("#chainToggle").addEventListener("click", () => {
+  chain.cut = !chain.cut;
+  $("#chainToggle").textContent = chain.cut ? "Restore the chain" : "Cut the chain";
+  $("#chainToggle").classList.toggle("on", chain.cut);
+  toast(chain.cut ? "Chain cut (demo). Watch what DeadBolt refuses to guess." : "Chain restored (demo). Reading it again…");
+  readChain();
+});
+$("#chainRetry").addEventListener("click", readChain);
+
+// keep the sticky banner just under the header, whatever height the header wraps to
+new ResizeObserver(([e]) => document.documentElement.style.setProperty("--hdr", `${Math.round(e.target.getBoundingClientRect().height)}px`))
+  .observe($(".topbar"));
 
 /* ---------------- demo pill ---------------- */
 $("#demoPill").addEventListener("click", () => {
@@ -398,10 +478,10 @@ function renderVitals(force = false) {
   $("#trackGrace").style.width = `${Math.max(0, p - graceP) * 100}%`;
   $("#trackCursor").style.left = `calc(${p * 100}% - 1px)`;
 
-  const vKey = `${st}:${missed}`;
+  const vKey = `${st}:${missed}:${chain.status}`;
   if (vKey !== lastVitalsState || force) {
     lastVitalsState = vKey;
-    $("#vHeadline").textContent = st === "FLATLINE" ? `Check-in missed (${missed} of ${MISSES_TO_GRACE}).` : HEADLINES[st];
+    $("#vHeadline").textContent = chain.status === "reading" ? "Checking the chain…" : st === "FLATLINE" ? `Check-in missed (${missed} of ${MISSES_TO_GRACE}).` : HEADLINES[st];
     const badge = $("#stateBadge");
     badge.className = `state-badge mono ${st}`;
     badge.textContent = st === "RELEASED" ? "RESURRECTED" : st;
@@ -436,6 +516,7 @@ const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&l
 
 function recordPulse(via = "sponsored") {
   if (!vault || stateOf(vault) === "RELEASED") return false;
+  if (!chainReady("your check-in")) return false;
   const was = stateOf(vault);
   vault.lastPulse = vault.simNow;
   const who = vault.owner ? vault.owner.account : "the owner";
@@ -455,8 +536,8 @@ $$("[data-speed]").forEach((b) => b.addEventListener("click", () => setSpeed(Num
 $$("[data-jump]").forEach((b) =>
   b.addEventListener("click", () => {
     if (!vault) return;
-    if (b.dataset.jump === "grace") vault.simNow = Math.max(vault.simNow, graceAt(vault) + 1000);
-    if (b.dataset.jump === "release") vault.simNow = Math.max(vault.simNow, releaseAt(vault) + 1000);
+    if (b.dataset.jump === "grace") jumpTo(graceAt(vault) + 1000);
+    if (b.dataset.jump === "release") jumpTo(releaseAt(vault) + 1000);
   })
 );
 $("#resetVault").addEventListener("click", () => {
@@ -482,6 +563,8 @@ $("#resetVault").addEventListener("click", () => {
   $("#destroyAsk").hidden = false;
   $("#mgReseal").open = false;
   mgKey = "";
+  chain.cut = false; $("#chainToggle").textContent = "Cut the chain"; $("#chainToggle").classList.remove("on");
+  clearTimeout(chain.timer); setChain("ok");
   toast("Vault destroyed. Every card and backup for it is now useless. Not even a toe was kept.");
 });
 
@@ -492,13 +575,19 @@ function renderClaim() {
   const st = stateOf(vault);
   const tomb = $("#tomb");
   $("#tombName").textContent = vault ? `Left for ${vault.heirName}` : "A sealed vault";
-  const released = st === "RELEASED";
+  const blind = !!vault && chain.status !== "ok" && !(st === "RELEASED" && heirSignedIn);
+  const released = st === "RELEASED" && !blind;
   tomb.classList.toggle("open", released);
-  $("#tombMeta").textContent = !vault ? "no vault on this device" : released ? "shard C · released" : `shard C · locked · ${st.toLowerCase()}`;
+  $("#tombMeta").textContent = !vault ? "no vault on this device" : blind ? (chain.status === "reading" ? "reading the chain…" : "chain unreachable") : released ? "shard C · released" : `shard C · locked · ${st.toLowerCase()}`;
   const box = $("#releasedBox");
   box.classList.toggle("hot", released && heirSignedIn);
+  box.classList.toggle("note", !(released && heirSignedIn)); // sentences wrap at words; only the shard breaks anywhere
   box.textContent = !vault
     ? "Nothing buried here yet. Assemble a vault on the operating table first."
+    : blind
+    ? (chain.status === "reading"
+      ? "Reading the chain…"
+      : "Can't reach the chain, so we can't tell yet whether shard C has been released. We won't guess. The break-glass route below works without the chain.")
     : !released
     ? `Locked by the chain clock. Opens in ${fmtDur(releaseAt(vault) - vault.simNow)} if no check-in arrives.`
     : heirSignedIn
@@ -519,6 +608,7 @@ $("#claimBtn").addEventListener("click", async () => {
   try {
     if (!vault) throw new Error("No vault on this device. Nothing to dig up.");
     if (await isRetired("cards", $("#shardInput").value)) throw new Error(RETIRED_CARD);
+    if (chain.status !== "ok") throw new Error("Can't reach the chain right now, so shard C can't be requested. We won't guess. The break-glass route below works without the chain.");
     if (stateOf(vault) !== "RELEASED") throw new Error("Shard C is still locked. The owner may still be alive (awkward).");
     if (!heirSignedIn) throw new Error("Sign in as the heir first. The last piece only goes to their account.");
     const a = decodeShare($("#shardInput").value);
@@ -694,7 +784,7 @@ function renderInvite(force = false) {
   if (valid && accepted) done.textContent = `Accepted as ${vault.heir.account}. You can close this page. We hope you never need it.`;
 }
 $("#invAccept").addEventListener("click", () => {
-  if (!vault) return;
+  if (!vault || !chainReady("your acceptance")) return;
   vault.heir = { accepted: true, account: vault.heirEmail, address: "0x" + toHex(crypto.getRandomValues(new Uint8Array(32))) };
   log(`${vault.heirName} accepted as ${vault.heir.account}. The last piece can only be released to that account.`, "v");
   save();
@@ -708,7 +798,7 @@ $("#invAccept").addEventListener("click", () => {
 
 $("#heirSignIn").addEventListener("click", () => {
   const err = $("#claimError");
-  if (!vault) return;
+  if (!vault || !chainReady("the request")) return;
   if (!vault.heir.accepted) {
     err.textContent = `${vault.heirName} never accepted the invitation, so the chain can't release the last piece to their account. Use the break-glass route below.`;
     return;
@@ -776,6 +866,7 @@ function renderManage() {
 
 $$('input[name="mgInterval"]').forEach((r) => r.addEventListener("change", () => {
   if (!vault || stateOf(vault) === "RELEASED") return;
+  if (!chainReady("the change")) { mgKey = ""; renderManage(); return; }
   const n = Number(r.value);
   if (n === vault.interval) return;
   const was = vault.interval;
@@ -803,6 +894,7 @@ $("#mgResealGo").addEventListener("click", async () => {
   const err = $("#mgErr");
   err.textContent = "";
   if (!vault || stateOf(vault) === "RELEASED") return;
+  if (!chainReady("the new seal")) return;
   const name = $("#mgHeirName").value.trim();
   const email = $("#mgHeirEmail").value.trim();
   const secret = $("#mgSecret").value;
@@ -862,6 +954,7 @@ $("#mgResealGo").addEventListener("click", async () => {
 });
 
 $("#destroyAsk").addEventListener("click", () => {
+  if (!chainReady("the delete")) return;
   $("#destroyConfirm").hidden = false;
   $("#destroyAsk").hidden = true;
 });
@@ -908,7 +1001,7 @@ function renderPulsePage(force = false) {
   const st = stateOf(vault);
   const missed = vault ? missedCount(vault) : 0;
   const daysLeft = vault && st === "GRACE" ? Math.ceil((releaseAt(vault) - vault.simNow) / DAY) : 0;
-  const key = [st, missed, daysLeft, pulsedHere].join("|");
+  const key = [st, missed, daysLeft, pulsedHere, chain.status].join("|");
   if (key === ppKey && !force) return;
   ppKey = key;
   const heir = vault ? vault.heirName : "";
@@ -922,11 +1015,12 @@ function renderPulsePage(force = false) {
   $("#ppHead").textContent = pulsedHere ? "Got it. You're alive." : copy[0];
   $("#ppLede").textContent = pulsedHere ? "Your vault stays locked. You can close this page." : copy[1];
   $("#pp").classList.toggle("urgent", !pulsedHere && st === "GRACE");
-  const canPulse = !!vault && st !== "RELEASED" && !pulsedHere;
+  const canPulse = !!vault && st !== "RELEASED" && !pulsedHere && chain.status === "ok";
   $("#ppBtn").hidden = !vault || pulsedHere;
   $("#ppBtn").disabled = !canPulse;
   $("#ppBtn").classList.toggle("urgent", st === "FLATLINE" || st === "GRACE");
   $("#ppFallback").hidden = !canPulse;
+  if (vault && !pulsedHere && chain.status === "down") $("#ppLede").textContent = "We can't reach the chain right now, so we can't record a check-in. Nothing has changed with your vault. Try again in a minute.";
   $("#ppMake").hidden = !!vault;
   $("#ppSign").textContent = vault && vault.owner && canPulse
     ? `Signed by ${vault.owner.account} (${shortAddr(vault.owner.address)}). DeadBolt pays the fee but can't sign for you.`
@@ -963,6 +1057,9 @@ const go = (hash) => () => { location.hash = hash; };
 function guideFor() {
   const r = curRoute();
   const st = stateOf(vault);
+  if (vault && chain.status === "down" && CHAIN_ROUTES.includes(r))
+    return ["The chain has gone quiet. I'm showing the last thing it told us, and I won't pretend anything opened. Check-ins and claims wait until it's back. Break-glass doesn't need it.",
+      "Restore the chain (demo)", () => { if (chain.cut) $("#chainToggle").click(); else readChain(); }];
   if (r === "/table") {
     if (forged) return ["It's alive! Print your heir's card, and seal your own backup with a password. Mortals always forget.", "Open the vitals", go("#/vitals")];
     if (step === 1) return ["What should outlive you? I'd go with a letter. My sample has wallet words, land documents and a debt to collect in it.", "Fill a sample for me",
@@ -977,11 +1074,11 @@ function guideFor() {
     if (!vault) return ["An empty table. Deeply unsettling. Let's build you a creature.", "To the operating table", go("#/table")];
     if (st === "ALIVE" && !vault.heir.accepted) return [`Steady heartbeat. ${vault.heirName}'s card has an invitation link on it. Let's see what she sees when she opens it.`, "Open the invitation", () => { location.hash = inviteHash(); }];
     if (st === "ALIVE") return ["Steady heartbeat. Now imagine you stop answering your check-ins. I'll skip ahead and show you what happens.", "Skip to a missed check-in",
-      () => { vault.simNow = Math.max(vault.simNow, dueAt(vault) + 1000); }];
+      () => { jumpTo(dueAt(vault) + 1000); }];
     if (st === "FLATLINE") return ["You missed a check-in, so I've sent you a reminder. It's in the outbox below. Nothing happens until you've missed three in a row.", "Miss all three",
-      () => { vault.simNow = Math.max(vault.simNow, graceAt(vault) + 1000); }];
+      () => { jumpTo(graceAt(vault) + 1000); }];
     if (st === "GRACE") return ["Three missed in a row. Grace period: 14 days of alarms on every channel. One tap undoes everything. Or…", "Let it lapse",
-      () => { vault.simNow = Math.max(vault.simNow, releaseAt(vault) + 1000); }];
+      () => { jumpTo(releaseAt(vault) + 1000); }];
     return ["The chain clock has spoken. Shard C is free. Your heir may now read the will.", "Go to the will", go("#/claim")];
   }
   if (r === "/invite") {
@@ -1011,7 +1108,7 @@ function guideFor() {
 }
 
 function renderGuide(force = false) {
-  const key = [curRoute(), step, !!forged, !!owner, pulsedHere, vault ? stateOf(vault) : "none", vault ? vault.heir.accepted : "-", heirSignedIn, revealed, guideHushed].join("|");
+  const key = [curRoute(), step, !!forged, !!owner, pulsedHere, chain.status, vault ? stateOf(vault) : "none", vault ? vault.heir.accepted : "-", heirSignedIn, revealed, guideHushed].join("|");
   if (key === guideKey && !force) return;
   guideKey = key;
   const [text, label, run] = guideFor();
