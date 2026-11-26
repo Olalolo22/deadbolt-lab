@@ -81,6 +81,13 @@
   - Outbox on Vitals in demo mode
   - _Requirements: 6b.1–6b.6_
 
+- [ ] 10c. Manage vault
+  - "Manage vault" card on Vitals: interval, change heir or contents (reseal), destroy with inline confirm
+  - Move `set_interval`, `reseal` (bumps `version`), `destroy`; `seal_approve` checks the current version
+  - Retired card / backup / invitation messages on Claim, break-glass and `/invite`
+  - After reseal, route to the keepsakes step (new card, new backup)
+  - _Requirements: 5c.1–5c.9_
+
 - [ ] 11. Implement pulse channels
   - Backend issues one-time pulse links per channel; tapping one relays `pulse()`; always offer a direct wallet pulse
   - Alarms on every channel when FLATLINE starts and daily during GRACE

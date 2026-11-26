@@ -17,6 +17,7 @@ let vault = load();
 if (vault && !vault.heir) vault.heir = { accepted: false, account: null, address: null };
 if (vault && !vault.inviteToken) vault.inviteToken = toHex(crypto.getRandomValues(new Uint8Array(16)));
 if (vault && !vault.outbox) vault.outbox = [];
+if (vault && !vault.retired) vault.retired = { cards: [], backups: [], invites: [] };
 let demo = true;          // demo: 1 day per real second
 let speed = 1;            // days per real second when demo is on
 let lastFrame = performance.now();
@@ -160,7 +161,7 @@ function frame(now) {
     prevMissed = m;
   }
   if (!$('[data-route="/"]').hidden) heroEcg(dt);
-  if (!$('[data-route="/vitals"]').hidden && vault) { vitalsEcg(dt); renderVitals(); }
+  if (!$('[data-route="/vitals"]').hidden && vault) { vitalsEcg(dt); renderVitals(); renderManage(); }
   requestAnimationFrame(frame);
 }
 
@@ -331,6 +332,7 @@ async function throwSwitch() {
       heir: { accepted: false, account: null, address: null },
       inviteToken: toHex(crypto.getRandomValues(new Uint8Array(16))),
       outbox: [],
+      retired: { cards: [], backups: [], invites: [] },
       log: [],
     };
     prevState = "ALIVE";
@@ -476,7 +478,11 @@ $("#resetVault").addEventListener("click", () => {
   $("#reveal").hidden = true;
   $("#shardInput").value = "";
   $("#keepsakes").hidden = true;
-  toast("Creature destroyed. Nothing was kept, not even a toe.");
+  $("#destroyConfirm").hidden = true;
+  $("#destroyAsk").hidden = false;
+  $("#mgReseal").open = false;
+  mgKey = "";
+  toast("Vault destroyed. Every card and backup for it is now useless. Not even a toe was kept.");
 });
 
 /* =========================================================
@@ -512,6 +518,7 @@ $("#claimBtn").addEventListener("click", async () => {
   errEl.textContent = "";
   try {
     if (!vault) throw new Error("No vault on this device. Nothing to dig up.");
+    if (await isRetired("cards", $("#shardInput").value)) throw new Error(RETIRED_CARD);
     if (stateOf(vault) !== "RELEASED") throw new Error("Shard C is still locked. The owner may still be alive (awkward).");
     if (!heirSignedIn) throw new Error("Sign in as the heir first. The last piece only goes to their account.");
     const a = decodeShare($("#shardInput").value);
@@ -650,8 +657,9 @@ const inviteHash = () => (vault ? `#/invite?t=${vault.inviteToken}` : "#/invite"
 function renderInvite(force = false) {
   const token = hashParams().get("t");
   const valid = !!vault && token === vault.inviteToken;
+  const withdrawn = !!vault && !valid && !!token && vault.retired.invites.includes(token);
   const accepted = !!vault && vault.heir.accepted;
-  const key = [!!vault, valid, accepted].join("|");
+  const key = [!!vault, valid, withdrawn, accepted, vault && vault.inviteToken].join("|");
   if (key === invKey && !force) return;
   invKey = key;
   const body = $("#invBody");
@@ -659,6 +667,10 @@ function renderInvite(force = false) {
     $("#invKicker").textContent = "No invitation";
     $("#invHead").textContent = "Nothing here yet.";
     body.innerHTML = "<p>There's no vault on this device, so there's no invitation to accept.</p>";
+  } else if (withdrawn) {
+    $("#invKicker").textContent = "Invitation withdrawn";
+    $("#invHead").textContent = "This invitation is no longer active.";
+    body.innerHTML = "<p>The person who sent it changed their plans, so there's nothing for you to do here. If they've named you again, they'll give you a new card with a new link.</p>";
   } else if (!valid) {
     $("#invKicker").textContent = "Invitation link incomplete";
     $("#invHead").textContent = "Use the link on your card.";
@@ -718,12 +730,145 @@ function renderHeirStatus() {
   mapA.textContent = accepted ? "accepted" : "invited";
   mapA.classList.toggle("ok", accepted);
   const s = $("#heirStatus");
-  s.textContent = accepted
-    ? `${vault.heirName} accepted as ${vault.heir.account}. Not them? Change your heir.`
-    : `${vault.heirName} hasn't accepted yet. Until they do, the chain can't release anything to them.`;
+  s.innerHTML = accepted
+    ? `${escapeHtml(vault.heirName)} accepted as ${escapeHtml(vault.heir.account)}. Not them? <button type="button" class="link-btn" data-open-reseal>Change your heir</button>.`
+    : `${escapeHtml(vault.heirName)} hasn't accepted yet. Until they do, the chain can't release anything to them.`;
   s.classList.toggle("warn", !accepted);
   $("#inviteLink").href = inviteHash();
 }
+
+/* =========================================================
+   MANAGE THE VAULT: interval, reseal (new heir or new contents), destroy.
+   Every change is signed by the owner, so it also counts as a check-in.
+   ========================================================= */
+let mgKey = "";
+const RETIRED_CARD = "That card was retired when the owner sealed the vault again. It doesn't open anything any more.";
+const sha256 = async (s) => toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))));
+async function isRetired(kind, raw) {
+  if (!vault || !raw || !raw.trim()) return false;
+  let norm;
+  try { norm = encodeShare(decodeShare(raw)); } catch { return false; }
+  return vault.retired[kind].includes(await sha256(norm));
+}
+const ownerName = () => (vault && vault.owner ? vault.owner.account : "the owner");
+
+function signedChange(msg) {
+  const was = stateOf(vault);
+  vault.lastPulse = vault.simNow;
+  log(`${msg} Signed by ${ownerName()}, so it also counts as a check-in.`, "v");
+  prevState = was; // the transition handler logs a revival if they were late
+  save();
+}
+
+function renderManage() {
+  if (!vault) return;
+  const released = stateOf(vault) === "RELEASED";
+  const k = [vault.inviteToken, vault.interval, released].join("|");
+  if (k === mgKey) return;
+  mgKey = k;
+  $$('input[name="mgInterval"]').forEach((r) => { r.checked = Number(r.value) === vault.interval; r.disabled = released; });
+  $("#mgIntervalBlock").hidden = released;
+  $("#mgReseal").hidden = released;
+  $("#manageNote").textContent = released
+    ? `Too late to change anything: the vault has already opened for ${vault.heirName}.`
+    : `Every change here is signed by ${ownerName()}, so it also counts as a check-in.`;
+}
+
+$$('input[name="mgInterval"]').forEach((r) => r.addEventListener("change", () => {
+  if (!vault || stateOf(vault) === "RELEASED") return;
+  const n = Number(r.value);
+  if (n === vault.interval) return;
+  const was = vault.interval;
+  vault.interval = n;
+  signedChange(`Check-in interval changed from every ${was} days to every ${n}.`);
+  toast(`Now every ${n} days. That counted as a check-in too.`);
+}));
+
+function openReseal() {
+  const d = $("#mgReseal");
+  d.open = true;
+  d.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("#heirStatus").addEventListener("click", (e) => { if (e.target.closest("[data-open-reseal]")) openReseal(); });
+$("#mgReseal").addEventListener("toggle", () => {
+  if (!$("#mgReseal").open || !vault) return;
+  $("#mgHeirName").value = vault.heirName;
+  $("#mgHeirEmail").value = vault.heirEmail;
+  $("#mgSecret").value = "";
+  $("#mgErr").textContent = "";
+});
+$("#mgSample").addEventListener("click", () => { $("#mgSecret").value = SAMPLE; });
+
+$("#mgResealGo").addEventListener("click", async () => {
+  const err = $("#mgErr");
+  err.textContent = "";
+  if (!vault || stateOf(vault) === "RELEASED") return;
+  const name = $("#mgHeirName").value.trim();
+  const email = $("#mgHeirEmail").value.trim();
+  const secret = $("#mgSecret").value;
+  if (!name) { err.textContent = "Name your heir. Even if it's the same person."; return; }
+  if (!/^\S+@\S+\.\S+$/.test(email)) { err.textContent = "That email looks cursed. Check the spelling."; return; }
+  if (!secret.trim()) { err.textContent = "Paste what you sealed before, or write it fresh. DeadBolt never kept a copy, so it can't fill this in for you."; return; }
+  const btn = $("#mgResealGo");
+  btn.disabled = true; btn.textContent = "Sealing…";
+  try {
+    const keyBytes = crypto.getRandomValues(new Uint8Array(32));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["encrypt"]);
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(secret)));
+    const [a, b, c] = split(keyBytes, 3, 2).map(encodeShare);
+
+    const oldHeir = vault.heirName;
+    const sameHeir = email.toLowerCase() === vault.heirEmail.toLowerCase();
+    vault.retired.cards.push(await sha256(vault.shards.a));
+    vault.retired.backups.push(await sha256(vault.shards.b));
+    vault.retired.invites.push(vault.inviteToken);
+    Object.assign(vault, {
+      heirName: name, heirEmail: email,
+      iv: toHex(iv), ct: toHex(ct),
+      shards: { a, b, c },
+      inviteToken: toHex(crypto.getRandomValues(new Uint8Array(16))),
+      heir: sameHeir ? vault.heir : { accepted: false, account: null, address: null },
+    });
+    signedChange(sameHeir
+      ? `Vault sealed again for ${name}: new key, new pieces. The old card, the old backup and the old invitation open nothing now.`
+      : `Heir changed from ${oldHeir} to ${name}. Vault sealed again: ${oldHeir}'s card, the old backup and the old invitation open nothing now.`);
+    if (!sameHeir) log(`${name} needs to accept their new card before the chain can release anything to them.`, "r");
+
+    // old keepsakes are useless: send the owner straight to the new ones
+    lastSealed = null; heirSignedIn = false; revealed = false;
+    $("#reveal").hidden = true; $("#shardInput").value = "";
+    $("#mgSecret").value = "";
+    $("#mgReseal").open = false;
+    $("#stitchStage").classList.add("live");
+    $('.shard[data-s="a"] code').textContent = a;
+    $('.shard[data-s="b"] code').textContent = b;
+    $('.shard[data-s="c"] code').textContent = c;
+    $("#keyPreview").textContent = "destroyed · only shards remain";
+    $("#stitchCaption").innerHTML = `Sealed again for ${escapeHtml(name)}. <b>Print the new card and save a new backup.</b> The old ones open nothing now.`;
+    $("#keepsakes").hidden = false;
+    forged = true;
+    mgKey = ""; heirStatusKey = ""; outboxKey = "";
+    save();
+    location.hash = "#/table";
+    showStep(4);
+    toast("Sealed again. Now print the new card and save a new backup.");
+  } catch (e) {
+    console.error(e);
+    err.textContent = "Sealing failed. This browser might be too old for it.";
+  } finally {
+    btn.disabled = false; btn.textContent = "Seal it again";
+  }
+});
+
+$("#destroyAsk").addEventListener("click", () => {
+  $("#destroyConfirm").hidden = false;
+  $("#destroyAsk").hidden = true;
+});
+$("#destroyKeep").addEventListener("click", () => {
+  $("#destroyConfirm").hidden = true;
+  $("#destroyAsk").hidden = false;
+});
 
 /* =========================================================
    SIGNED CHECK-INS (simulated Google sign-in, zkLogin in the real build)
@@ -1000,9 +1145,11 @@ $("#bgGo").addEventListener("click", async () => {
   try {
     if (!vault) throw new Error("No vault on this device. Nothing to dig up.");
     if (!$("#shardInput").value.trim()) throw new Error("Paste your card (shard A) above first. The backup alone opens nothing.");
+    if (await isRetired("cards", $("#shardInput").value)) throw new Error(RETIRED_CARD);
     const a = decodeShare($("#shardInput").value);
     btn.disabled = true; btn.textContent = "Checking the password…";
     const b = await openBackup($("#bgSealed").value, $("#bgPw").value);
+    if (await isRetired("backups", encodeShare(b))) throw new Error("That backup was retired when the owner sealed the vault again. It belongs to the old version and opens nothing now.");
     await reanimate([a, b], "the heir's card and the sealed backup, without the chain (break-glass)", "opened by break-glass");
     $("#bgPw").value = "";
   } catch (e) {
