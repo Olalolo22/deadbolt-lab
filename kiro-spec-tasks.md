@@ -18,7 +18,7 @@
     - _Requirements: 2.6, 5.5, 5.7_
 
 - [ ] 3. Implement the lifecycle state machine
-  - Pure `stateOf`, `dueAt` and `releaseAt` in `lib/lifecycle.ts`, plus the headline map
+  - Pure `stateOf`, `dueAt`, `graceAt`, `releaseAt` and `missedCount` in `lib/lifecycle.ts`, plus the headline map (grace only after 3 missed check-ins in a row)
   - Boundary tests at ±1 ms for each transition; RELEASED is terminal
   - _Requirements: 4.1–4.6_
 

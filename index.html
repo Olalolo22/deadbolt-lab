@@ -444,6 +444,8 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
 
 .track { position: relative; height: 12px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line-2); overflow: hidden; }
 .track-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--volt-dim), var(--volt)); }
+.track-missed { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(45deg, rgba(237,230,214,.28) 0 6px, transparent 6px 12px); }
+.note.worst { margin-top: 10px; color: var(--bone); border-style: solid; border-color: var(--line-2); }
 .track-grace { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(45deg, rgba(229,72,77,.25) 0 6px, transparent 6px 12px); }
 .track-cursor { position: absolute; top: -3px; bottom: -3px; width: 3px; background: var(--bone); box-shadow: 0 0 10px var(--bone); }
 .track-legend { display: flex; justify-content: space-between; font-size: 0.64rem; color: var(--muted); margin-top: 8px; text-transform: uppercase; letter-spacing: .1em; }
@@ -705,7 +707,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
           </svg>
           <h3>The Heart</h3>
           <p class="organ-sub mono">Email &amp; Telegram heartbeat</p>
-          <p>Every 30 days, a one-tap "I'm alive" link lands in your inbox or Telegram. No wallet or gas needed, so your mum could do it. Miss it, and the alarm starts.</p>
+          <p>Every 30 days, a one-tap "I'm alive" link lands in your inbox or Telegram. No wallet or gas needed, so your mum could do it. Miss three in a row, and the alarms start.</p>
         </article>
         <div class="seam" aria-hidden="true"></div>
         <article class="organ">
@@ -727,8 +729,8 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
       </div>
       <ol class="lifecycle">
         <li class="lc lc-alive"><span class="lc-n mono">01</span><h4>Alive</h4><p>You tap the pulse link and the timer resets. Nothing moves.</p></li>
-        <li class="lc lc-flat"><span class="lc-n mono">02</span><h4>Flatline</h4><p>A pulse is missed, and DeadBolt alerts you on every channel.</p></li>
-        <li class="lc lc-grace"><span class="lc-n mono">03</span><h4>Grace</h4><p>You have 14 days to tap once and undo everything.</p></li>
+        <li class="lc lc-flat"><span class="lc-n mono">02</span><h4>Flatline</h4><p>You miss a check-in. DeadBolt reminds you, up to three times. Nothing else happens.</p></li>
+        <li class="lc lc-grace"><span class="lc-n mono">03</span><h4>Grace</h4><p>Three missed in a row opens 14 days of alarms on every channel. One tap undoes everything.</p></li>
         <li class="lc lc-rise"><span class="lc-n mono">04</span><h4>Resurrection</h4><p>The clock opens shard C. Your heir adds shard A and the secret lives again.</p></li>
       </ol>
       </div>
@@ -806,7 +808,8 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
             <label class="choice"><input type="radio" name="channel" value="Telegram" /><span>Telegram</span></label>
             <label class="choice"><input type="radio" name="channel" value="SMS" /><span>SMS</span></label>
           </div>
-          <p class="note">Grace period: <b class="mono">14 days</b>. It's fixed on purpose: a single tap during grace undoes everything.</p>
+          <p class="note">Miss <b class="mono">3</b> check-ins in a row and a <b class="mono">14-day</b> grace period starts. One tap during grace undoes everything.</p>
+          <p class="note worst" id="worstCase"></p>
         </fieldset>
 
         <!-- step 4 -->
@@ -860,7 +863,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
         <div class="monitor" id="monitor">
           <canvas id="ecg" height="180"></canvas>
           <div class="monitor-hud mono">
-            <div><small>next pulse due</small><b id="hudDue">—</b></div>
+            <div><small id="hudDueLabel">next check-in</small><b id="hudDue">—</b></div>
             <div><small>since last pulse</small><b id="hudSince">—</b></div>
             <div><small>channel</small><b id="hudChannel">—</b></div>
           </div>
@@ -879,6 +882,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
             <h3 class="card-title mono">Lifecycle</h3>
             <div class="track" id="track">
               <div class="track-fill" id="trackFill"></div>
+              <div class="track-missed" id="trackMissed"></div>
               <div class="track-grace" id="trackGrace"></div>
               <div class="track-cursor" id="trackCursor"></div>
             </div>

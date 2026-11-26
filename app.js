@@ -7,7 +7,7 @@ import { split, combine, toHex, fromHex, encodeShare, decodeShare } from "./sham
 
 const DAY = 86_400_000;
 const GRACE_DAYS = 14;
-const FLATLINE_DAYS = 1; // first day after a missed pulse = "flatline" alarm window
+const MISSES_TO_GRACE = 3; // same rule as the engine: grace starts only after 3 missed check-ins in a row
 const STORE_KEY = "deadbolt.vault.v1";
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -26,18 +26,19 @@ function save() {
 }
 
 /* ---------------- lifecycle maths ---------------- */
+// ALIVE -> FLATLINE (1st missed check-in) -> GRACE (after 3 missed in a row) -> RELEASED (14 days later)
 function stateOf(v) {
   if (!v) return null;
-  const due = v.lastPulse + v.interval * DAY;
-  const release = due + GRACE_DAYS * DAY;
   const t = v.simNow;
-  if (t < due) return "ALIVE";
-  if (t < due + FLATLINE_DAYS * DAY) return "FLATLINE";
-  if (t < release) return "GRACE";
+  if (t < dueAt(v)) return "ALIVE";
+  if (t < graceAt(v)) return "FLATLINE";
+  if (t < releaseAt(v)) return "GRACE";
   return "RELEASED";
 }
 const dueAt = (v) => v.lastPulse + v.interval * DAY;
-const releaseAt = (v) => dueAt(v) + GRACE_DAYS * DAY;
+const graceAt = (v) => v.lastPulse + MISSES_TO_GRACE * v.interval * DAY;
+const releaseAt = (v) => graceAt(v) + GRACE_DAYS * DAY;
+const missedCount = (v) => Math.min(MISSES_TO_GRACE, Math.max(0, Math.floor((v.simNow - v.lastPulse) / (v.interval * DAY))));
 
 function fmtDur(ms) {
   const neg = ms < 0; ms = Math.abs(ms);
@@ -137,6 +138,7 @@ const vitalsEcg = makeEcg($("#ecg"), () => stateOf(vault) || "ALIVE");
 
 /* ---------------- main loop ---------------- */
 let prevState = stateOf(vault);
+let prevMissed = vault ? missedCount(vault) : 0;
 function frame(now) {
   const dt = Math.min(100, now - lastFrame);
   lastFrame = now;
@@ -146,6 +148,9 @@ function frame(now) {
     const st = stateOf(vault);
     if (st !== prevState) onTransition(prevState, st);
     prevState = st;
+    const m = missedCount(vault);
+    if (st === "FLATLINE" && m > prevMissed && m > 1) log(`Missed check-in ${m} of ${MISSES_TO_GRACE}. Reminder sent via ${vault.channel}.`, "r");
+    prevMissed = m;
   }
   if (!$('[data-route="/"]').hidden) heroEcg(dt);
   if (!$('[data-route="/vitals"]').hidden && vault) { vitalsEcg(dt); renderVitals(); }
@@ -156,8 +161,8 @@ setInterval(() => { if (vault) save(); }, 1500);
 
 function onTransition(from, to) {
   if (!vault || !from) return;
-  if (to === "FLATLINE") { log(`Pulse missed. Alerts sent via ${vault.channel}.`, "r"); toast(`Pulse missed. ${vault.channel} alarm sent.`); }
-  if (to === "GRACE") { log(`Grace period open: ${GRACE_DAYS} days to respond.`, "r"); }
+  if (to === "FLATLINE") { log(`Missed check-in 1 of ${MISSES_TO_GRACE}. Reminder sent via ${vault.channel}.`, "r"); toast(`Missed a check-in. ${vault.channel} reminder sent.`); }
+  if (to === "GRACE") { log(`${MISSES_TO_GRACE} missed check-ins in a row. Grace period open: ${GRACE_DAYS} days, alarms on every channel.`, "r"); }
   if (to === "RELEASED") {
     log("Chain clock passed the deadline. Shard C released.", "e");
     lightning();
@@ -229,6 +234,14 @@ function applyKind() {
   $("#fillSample").textContent = k.label;
 }
 $$('input[name="kind"]').forEach((r) => r.addEventListener("change", applyKind));
+
+function renderWorstCase() {
+  const days = Number(($('input[name="interval"]:checked') || {}).value || 30);
+  const total = MISSES_TO_GRACE * days + GRACE_DAYS;
+  $("#worstCase").textContent = `With a ${days}-day check-in, nothing can be released until ${total} days of complete silence: ${MISSES_TO_GRACE} missed check-ins, then ${GRACE_DAYS} days of alarms.`;
+}
+$$('input[name="interval"]').forEach((r) => r.addEventListener("change", renderWorstCase));
+renderWorstCase();
 $("#fillSample").addEventListener("click", () => { $("#secret").value = KINDS[currentKind()].sample; $("#secret").focus(); });
 
 function showStep(n) {
@@ -328,7 +341,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
    ========================================================= */
 const HEADLINES = {
   ALIVE: "Subject is alive.",
-  FLATLINE: "Pulse missed.",
+  FLATLINE: "Check-in missed.",
   GRACE: "Grace period. Tap to live.",
   RELEASED: "It has risen.",
 };
@@ -343,7 +356,15 @@ function renderVitals(force = false) {
   const st = stateOf(vault);
   const now = vault.simNow;
   $("#vName").textContent = `for ${vault.heirName}`;
-  $("#hudDue").textContent = st === "ALIVE" ? `in ${fmtDur(dueAt(vault) - now)}` : st === "RELEASED" ? "—" : fmtDur(dueAt(vault) - now);
+  const missed = missedCount(vault);
+  const [hudLabel, hudValue] = {
+    ALIVE: ["next check-in", `in ${fmtDur(dueAt(vault) - now)}`],
+    FLATLINE: ["missed in a row", `${missed} of ${MISSES_TO_GRACE}`],
+    GRACE: ["opens in", fmtDur(releaseAt(vault) - now)],
+    RELEASED: ["status", "released"],
+  }[st];
+  $("#hudDueLabel").textContent = hudLabel;
+  $("#hudDue").textContent = hudValue;
   $("#hudSince").textContent = fmtDur(now - vault.lastPulse).replace(" ago", "");
   $("#hudChannel").textContent = vault.channel;
 
@@ -351,14 +372,18 @@ function renderVitals(force = false) {
   const span = releaseAt(vault) - vault.lastPulse;
   const p = Math.min(1, Math.max(0, (now - vault.lastPulse) / span));
   const dueP = (vault.interval * DAY) / span;
+  const graceP = (graceAt(vault) - vault.lastPulse) / span;
   $("#trackFill").style.width = `${Math.min(p, dueP) * 100}%`;
-  $("#trackGrace").style.left = `${dueP * 100}%`;
-  $("#trackGrace").style.width = `${Math.max(0, p - dueP) * 100}%`;
+  $("#trackMissed").style.left = `${dueP * 100}%`;
+  $("#trackMissed").style.width = `${Math.max(0, Math.min(p, graceP) - dueP) * 100}%`;
+  $("#trackGrace").style.left = `${graceP * 100}%`;
+  $("#trackGrace").style.width = `${Math.max(0, p - graceP) * 100}%`;
   $("#trackCursor").style.left = `calc(${p * 100}% - 1px)`;
 
-  if (st !== lastVitalsState || force) {
-    lastVitalsState = st;
-    $("#vHeadline").textContent = HEADLINES[st];
+  const vKey = `${st}:${missed}`;
+  if (vKey !== lastVitalsState || force) {
+    lastVitalsState = vKey;
+    $("#vHeadline").textContent = st === "FLATLINE" ? `Check-in missed (${missed} of ${MISSES_TO_GRACE}).` : HEADLINES[st];
     const badge = $("#stateBadge");
     badge.className = `state-badge mono ${st}`;
     badge.textContent = st === "RELEASED" ? "RESURRECTED" : st;
@@ -369,7 +394,7 @@ function renderVitals(force = false) {
     pb.disabled = st === "RELEASED";
     $("#pulseHint").textContent = {
       ALIVE: "One tap resets the timer. This is what your email or Telegram link does.",
-      FLATLINE: "You missed a pulse. Tap now and nothing happens to your vault.",
+      FLATLINE: `You've missed ${missed} of ${MISSES_TO_GRACE} check-ins. Nothing happens until the third. Tap now and it all resets.`,
       GRACE: "Last chance. One tap cancels the release.",
       RELEASED: "Too late: shard C is public. Your heir can claim now.",
     }[st];
@@ -405,7 +430,7 @@ $$("[data-speed]").forEach((b) => b.addEventListener("click", () => setSpeed(Num
 $$("[data-jump]").forEach((b) =>
   b.addEventListener("click", () => {
     if (!vault) return;
-    if (b.dataset.jump === "grace") vault.simNow = Math.max(vault.simNow, dueAt(vault) + FLATLINE_DAYS * DAY + 1000);
+    if (b.dataset.jump === "grace") vault.simNow = Math.max(vault.simNow, graceAt(vault) + 1000);
     if (b.dataset.jump === "release") vault.simNow = Math.max(vault.simNow, releaseAt(vault) + 1000);
   })
 );
@@ -502,16 +527,16 @@ function guideFor() {
       () => { if (!$("#secret").value.trim()) $("#secret").value = KINDS[currentKind()].sample; showStep(2); }];
     if (step === 2) return ["Who gets it when you're gone? Choose carefully. Ravens remember.", "Use a sample heir",
       () => { if (!$("#heirName").value.trim()) $("#heirName").value = "Aisha Bello"; if (!$("#heirEmail").value.trim()) $("#heirEmail").value = "aisha@example.com"; showStep(3); }];
-    if (step === 3) return ["How often should I check you're still breathing? Thirty days is sensible. Seven if you're dramatic.", "Thirty days is fine", () => showStep(4)];
+    if (step === 3) return ["How often should I check you're still breathing? I'll only start worrying after three missed check-ins in a row.", "Thirty days is fine", () => showStep(4)];
     return ["Pull the lever. Your secret gets locked right here in this browser. Only scrambled noise ever leaves.", "⚡ Throw the switch", () => $("#nextBtn").click()];
   }
   if (r === "/vitals") {
     if (!vault) return ["An empty table. Deeply unsettling. Let's build you a creature.", "To the operating table", go("#/table")];
     if (st === "ALIVE") return ["Steady heartbeat. Now imagine you stop answering your check-ins. I'll skip ahead and show you what happens.", "Skip to a missed check-in",
       () => { vault.simNow = Math.max(vault.simNow, dueAt(vault) + 1000); }];
-    if (st === "FLATLINE") return ["You missed a check-in. I'm pecking at your inbox right now. Tap \"I'm alive\" and all is forgiven.", "Ignore it",
-      () => { vault.simNow = Math.max(vault.simNow, dueAt(vault) + FLATLINE_DAYS * DAY + 1000); }];
-    if (st === "GRACE") return ["Grace period: 14 days to prove you're alive. One tap undoes everything. Or…", "Let it lapse",
+    if (st === "FLATLINE") return ["You missed a check-in. I'm pecking at your inbox. Nothing happens until you've missed three in a row, and one tap resets it all.", "Miss all three",
+      () => { vault.simNow = Math.max(vault.simNow, graceAt(vault) + 1000); }];
+    if (st === "GRACE") return ["Three missed in a row. Grace period: 14 days of alarms on every channel. One tap undoes everything. Or…", "Let it lapse",
       () => { vault.simNow = Math.max(vault.simNow, releaseAt(vault) + 1000); }];
     return ["The chain clock has spoken. Shard C is free. Your heir may now read the will.", "Go to the will", go("#/claim")];
   }

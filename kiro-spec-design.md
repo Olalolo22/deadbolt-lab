@@ -79,12 +79,12 @@ policy-gated decryption works behind the same interface.
 ### Lifecycle (pure, unit-tested)
 
 ```ts
-const DAY = 86_400_000, GRACE = 14 * DAY, FLATLINE = 1 * DAY;
+const DAY = 86_400_000, GRACE = 14 * DAY, MISSES = 3; // matches the engine's steering rules
 stateOf({ lastPulse, intervalMs }, now):
-  now < lastPulse + intervalMs                 → ALIVE
-  now < lastPulse + intervalMs + FLATLINE      → FLATLINE
-  now < lastPulse + intervalMs + GRACE         → GRACE
-  otherwise                                    → RELEASED (terminal)
+  now < lastPulse + intervalMs                        → ALIVE
+  now < lastPulse + MISSES * intervalMs               → FLATLINE  (1st or 2nd missed check-in)
+  now < lastPulse + MISSES * intervalMs + GRACE       → GRACE     (alarms on every channel)
+  otherwise                                           → RELEASED  (terminal)
 ```
 
 ### Shard encoding

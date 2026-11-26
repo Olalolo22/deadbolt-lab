@@ -73,9 +73,9 @@ The ECG is the only thing that moves continuously. No parallax, cursor effects o
 | State | Trigger | Headline | Colour |
 | --- | --- | --- | --- |
 | `ALIVE` | pulse within interval | "Subject is alive." | volt |
-| `FLATLINE` | first day after a missed pulse | "Pulse missed." | bone |
-| `GRACE` | days 1–14 after a missed pulse | "Grace period. Tap to live." | stitch |
-| `RELEASED` | grace expired, shard C opens | "It has risen." | ether |
+| `FLATLINE` | 1st or 2nd missed check-in in a row | "Check-in missed (n of 3)." | bone |
+| `GRACE` | 3 missed check-ins in a row, for 14 days | "Grace period. Tap to live." | stitch |
+| `RELEASED` | grace expired, the release piece opens | "It has risen." | ether |
 
 A single pulse in any state except `RELEASED` returns to `ALIVE`.
 
