@@ -53,7 +53,7 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 1. The creation flow SHALL have four steps in order: Secret, Heir, Pulse, Stitch, with a visible stepper.
 2. WHEN the owner submits step 1 with an empty secret THEN the system SHALL block progress and show "Give the creature something to guard."
 3. WHEN the owner submits step 2 without an heir name THEN the system SHALL block progress and show "Name your heir."
-4. IF the owner enters a malformed heir email THEN the system SHALL block progress and show an inline error.
+4. The heir's email SHALL be required. IF it is missing or malformed THEN the system SHALL block progress and show an inline error.
 5. Step 3 SHALL offer intervals of 7, 30 and 90 days (default 30) and channels Email, Telegram and SMS (default Email), SHALL state the rule (3 missed check-ins, then a 14-day grace period), and SHALL show the worst case in days of total silence before any release.
 6. WHEN the owner taps "⚡ Throw the switch" THEN the system SHALL generate a random 256-bit key, encrypt the secret with AES-256-GCM, and split the key into three shards with a 2-of-3 threshold, all in the browser.
 7. WHEN the split completes THEN the system SHALL play the split animation (key core charges, three bolts draw, shards A, B and C appear) and trigger the lightning flash once.
@@ -100,7 +100,7 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 
 1. The claim page SHALL show a tombstone with the heir's name and shard C's status.
 2. WHILE shard C is locked the page SHALL show when it opens if no pulse arrives, and the "Reanimate" action SHALL explain that the owner may still be alive.
-3. WHEN shard C is released THEN the tombstone SHALL show a violet crack and the released shard SHALL be displayed.
+3. WHEN shard C is released THEN the tombstone SHALL show a violet crack, and the released shard SHALL be shown only after the heir signs in with the account that accepted the invitation (Requirement 5b).
 4. WHEN the heir provides shard A and taps "Reanimate" after release THEN the system SHALL rebuild the key from A + C, decrypt in the browser, and reveal the secret with the lightning flash.
 5. IF the pasted text is not a valid shard THEN the system SHALL show "That doesn't look like a DeadBolt shard."
 6. IF both shards have the same index THEN the system SHALL show "You need two different shards."
@@ -118,6 +118,19 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 4. The claim page SHALL offer a break-glass route: heir card + sealed backup + password rebuilds the key in the browser without the chain.
 5. IF the password is wrong or the backup belongs to another vault THEN the system SHALL show "Wrong password, or that backup belongs to another vault." and reveal nothing.
 6. The UI SHALL state the trade-off: whoever holds the backup and its password, together with the heir, could open the vault early.
+
+### Requirement 5b: The heir's invitation and a release bound to their account
+
+**User Story:** As an owner, I want the last piece to reach only my heir, so that a stolen card isn't enough to open my vault.
+
+#### Acceptance Criteria
+
+1. WHEN a vault is created THEN the system SHALL generate a one-time invitation code in the browser and print the invitation link on the heir's card. DeadBolt's servers SHALL NOT receive the code.
+2. The invitation page (`/invite`) SHALL explain calmly what being named means, what to keep, and that nothing happens now, with one action: "Accept with Google".
+3. WHEN the heir accepts THEN the vault SHALL record the heir's zkLogin address, and Vitals SHALL show "accepted as <account>" with a pointer to change the heir if that's wrong.
+4. WHILE the heir has not accepted, Vitals SHALL say so as a warning.
+5. The release policy SHALL require BOTH the chain clock past the release time AND the request coming from the heir's address (Seal `seal_approve`).
+6. IF the heir never accepted THEN the claim page SHALL say the normal route is unavailable and point to the break-glass route.
 
 ### Requirement 6: Chain-clock and heartbeat adapters
 

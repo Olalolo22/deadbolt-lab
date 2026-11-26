@@ -115,6 +115,7 @@ interface Vault {
 | Component | Trust | Label shown |
 | --- | --- | --- |
 | Shamir split, AES-GCM | None: runs in the owner's browser | "Encrypted on your device" |
+| Heir binding | The invitation code is printed on the heir's card (never seen by DeadBolt); the heir accepts with Google and the vault stores their address; the release only goes to that address | "Released only to the account your heir accepted with." |
 | Owner backup (shard B) | Sealed with the owner's password. Alone: nothing. With the heir's card *and* the password: opens the vault without the chain, by design (break-glass) | "Sealed with a password only you know. Even your heir can't use it alone." |
 | Shard C release | Chain clock + Seal key-server threshold | "Released by the chain clock" |
 | Check-ins | Signed by the owner's zkLogin address; DeadBolt only sponsors the fee (Enoki) | "Signed by you. DeadBolt pays the fee but can't sign for you." |
@@ -137,6 +138,23 @@ public fun pulse(v: &mut Vault, clock: &Clock, ctx: &TxContext) {
 
 The check-in page builds this transaction, the owner signs it through Enoki's zkLogin wallet, and DeadBolt's server
 asks Enoki to sponsor and submit it. The fallback path signs and pays from the same address with the owner's own gas.
+
+### Heir-bound release (Sui + Seal)
+
+```move
+// Vault gains: heir: Option<address>, invite_hash: vector<u8>
+public fun accept_heir(v: &mut Vault, code: vector<u8>, ctx: &TxContext) {
+    assert!(hash::sha2_256(code) == v.invite_hash, EBadInvite);
+    assert!(option::is_none(&v.heir), EAlreadyAccepted);
+    v.heir = option::some(ctx.sender());
+}
+
+/// Seal key servers only release the decryption key if this passes.
+entry fun seal_approve(id: vector<u8>, v: &Vault, clock: &Clock, ctx: &TxContext) {
+    assert!(clock.timestamp_ms() >= release_at(v), ETooSoon);
+    assert!(option::contains(&v.heir, &ctx.sender()), ENotHeir);
+}
+```
 
 ### Sealed backup format
 
