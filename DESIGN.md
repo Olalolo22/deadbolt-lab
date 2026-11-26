@@ -78,6 +78,16 @@ The ECG is the only thing that moves continuously. No parallax, cursor effects o
 
 Messages never contain secrets, shards or the invitation code. The prototype shows them in an Outbox on Vitals.
 
+## When the chain is slow or unreachable
+
+**Rule: a failure never looks like a release.**
+
+- **Reading** (every chain page opens with this): a slim banner, "Reading your vault from the chain…", with the badge, headline and numbers gently pulsing. Usually under a second.
+- **Unreachable:** a red banner, "Can't reach the chain. Showing what it last told us (day 042). Nothing is released, claimed or checked in on a guess.", with "Try again". The state badge adds "· last seen".
+- While it's unreachable: check-ins, accepting, claiming and every manage action say "wasn't sent, nothing changed". The claim box says "we can't tell yet… we won't guess" and points to break-glass, which works without the chain.
+- When the chain comes back, the app catches up on the time it missed. Only then can a real release happen, with its usual moment.
+- The Raven says it plainly. The demo has a "Cut the chain" switch in Time warp so judges can see this.
+
 ## Managing a vault
 
 A "Manage vault" card on Vitals, with three things and nothing else:

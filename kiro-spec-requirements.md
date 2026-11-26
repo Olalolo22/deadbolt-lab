@@ -159,6 +159,20 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 3. WHEN live mode is active THEN the UI SHALL read `lastPulse` and the release state from the chain, not from local storage.
 4. The UI SHALL label each trust assumption honestly (for example, which party relays pulses and which releases shard C), and SHALL NOT claim "trustless" for any component that depends on an operator.
 
+### Requirement 6c: Reading the chain, and when it can't be reached
+
+**User Story:** As an owner or heir, I want the app to be honest when it can't reach the chain, so that a network problem never looks like my vault opened (or like I checked in when I didn't).
+
+#### Acceptance Criteria
+
+1. WHEN Vitals, Claim, the check-in page or the invitation page opens THEN the system SHALL show a "Reading your vault from the chain…" state until the chain answers.
+2. IF a chain read fails THEN the system SHALL keep showing the last state the chain reported, labelled "last seen" with the day it was seen, and SHALL offer "Try again".
+3. A read failure SHALL NEVER cause the UI to show RELEASED, show shard C, or send the heir's release notice.
+4. WHILE the chain is unreachable, check-ins, accepting the invitation, claiming, and every manage action SHALL be refused with "wasn't sent, nothing changed", never queued silently and never shown as done.
+5. WHILE the chain is unreachable, the claim page SHALL say it can't tell whether the vault has opened, and SHALL point to the break-glass route, which works without the chain.
+6. WHEN the chain is reachable again THEN the system SHALL catch up on the time it missed before showing any new state.
+7. Demo mode SHALL include a control to cut and restore the chain.
+
 ### Requirement 6a: Signed check-ins and the check-in page
 
 **User Story:** As an owner, I want my check-ins signed by me with nothing more than a Google sign-in, so that nobody (DeadBolt included) can fake that I'm alive or decide that I'm gone.

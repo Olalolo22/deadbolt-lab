@@ -69,6 +69,13 @@
   - Live mode reads state from the chain only; a read failure never shows RELEASED
   - _Requirements: 6.1, 6.3_
 
+- [ ] 10.3 Chain connection states
+  - `reading` / `ok` / `unreachable` with a shared banner; "last seen" label on the state badge
+  - Derive state only from the last chain answer; disable writes while not `ok`; back-off retries + "Try again"
+  - Claim page: "can't tell yet, won't guess" plus the break-glass pointer; demo "Cut the chain" switch
+  - Tests: a read failure during GRACE past the release time never renders RELEASED
+  - _Requirements: 6c.1–6c.7_
+
 - [ ] 10a. Signed check-ins
   - Google sign-in through Enoki (zkLogin) in the create flow; store the owner's address on the vault
   - Move `pulse()` that asserts `sender == owner`; Enoki-sponsored transactions; own-wallet fallback

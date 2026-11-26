@@ -163,6 +163,22 @@ entry fun seal_approve(id: vector<u8>, v: &Vault, clock: &Clock, ctx: &TxContext
 }
 ```
 
+### Chain connection states
+
+```ts
+type ChainStatus = "reading" | "ok" | "unreachable";
+interface ChainView { status: ChainStatus; lastSeen?: { state: State; lastPulse: number; at: number } }
+```
+
+- Every chain page starts in `reading` and shows the cached `lastSeen` (dimmed) until the first answer.
+- `unreachable` keeps `lastSeen`. The UI derives the state from `lastSeen` only, never from the device clock, so
+  a long outage can't make a vault look released.
+- Writes (`pulse`, `accept_heir`, the Seal request, `set_interval`, `reseal`, `destroy`) are disabled while not `ok`
+  and fail loudly ("wasn't sent, nothing changed"). Nothing is queued silently.
+- Retries back off (1 s, 2 s, 5 s, 10 s, then every 30 s) and "Try again" retries at once.
+- The message worker follows the same rule: no chain answer, no message. A release notice is only sent after the
+  chain itself reports the release.
+
 ### Managing a vault (Sui)
 
 ```move
@@ -209,7 +225,7 @@ string. The key comes from the password via Argon2id (production) or PBKDF2-HMAC
 
 - WebCrypto unavailable → block creation with "This browser is too old for WebCrypto."
 - Invalid shard text, duplicate shard index, GCM auth failure → the exact copy in Requirement 5.
-- Chain read failure in live mode → keep the last known state, show "Chain unreachable. Showing last known state," and never infer RELEASED from a failure.
+- Chain read failure in live mode → keep the last known state, show "Can't reach the chain. Showing what it last told us (day N)," offer "Try again", and never infer RELEASED from a failure. See *Chain connection states* below.
 - Engraving load failure → the plate hides itself (`onError`).
 
 ## Testing Strategy
