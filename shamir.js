@@ -69,6 +69,6 @@ export const fromHex = (hex) => {
 export const encodeShare = (s) => `DB1-${s.x}-${toHex(s.y)}`;
 export const decodeShare = (str) => {
   const m = str.trim().match(/^DB1-(\d+)-([0-9a-f]+)$/i);
-  if (!m) throw new Error("That doesn't look like a DeadBolt shard.");
+  if (!m) throw new Error("That's not a shard, that's a spell gone wrong. Real shards start with DB1-.");
   return { x: Number(m[1]), y: fromHex(m[2]) };
 };

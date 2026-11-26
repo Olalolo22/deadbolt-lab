@@ -188,8 +188,48 @@ function setSpeed(s) {
 let step = 1;
 let forged = null; // result of throwing the switch
 
-const SAMPLE = "ghost lantern velvet orbit marble thunder candle meadow riddle anchor willow spark";
-$("#fillSample").addEventListener("click", () => { $("#secret").value = SAMPLE; $("#secret").focus(); });
+const WORDS = "ghost lantern velvet orbit marble thunder candle meadow riddle anchor willow spark";
+const KINDS = {
+  letter: {
+    label: "Use a sample letter",
+    placeholder: "Dear…",
+    sample: `Dear Aisha,
+
+If you're reading this, the raven was right and I'm gone. Don't panic. Here's everything you need:
+
+1. The wallet words: ${WORDS}
+2. The land documents are in the blue file, top shelf of my wardrobe.
+3. Uncle Tunde still owes me ₦200,000. Collect it with a smile.
+
+I'm proud of you. I always have been.
+
+Love, Dad`,
+  },
+  keys: {
+    label: "Use sample wallet words",
+    placeholder: "Seed phrase, hardware wallet PIN…",
+    sample: `Wallet recovery words:\n${WORDS}\n\nHardware wallet PIN: 4471 (it's in the drawer under the TV).`,
+  },
+  access: {
+    label: "Use sample passwords",
+    placeholder: "Email, bank app, phone passcode…",
+    sample: "Email: dad.bello@example.com\nPassword: Lagos-Rain-1987\n\nBank app PIN: 2580\nPhone passcode: 091919",
+  },
+  instructions: {
+    label: "Use sample instructions",
+    placeholder: "Where the documents are, who to call…",
+    sample: "The will is with Barrister Okafor in Marina.\nLand documents: blue file, top shelf of my wardrobe.\nLife insurance: the policy is in the same file. Call the number on the front.",
+  },
+};
+const currentKind = () => ($('input[name="kind"]:checked') || {}).value || "letter";
+const SAMPLE = KINDS.letter.sample;
+function applyKind() {
+  const k = KINDS[currentKind()];
+  $("#secret").placeholder = k.placeholder;
+  $("#fillSample").textContent = k.label;
+}
+$$('input[name="kind"]').forEach((r) => r.addEventListener("change", applyKind));
+$("#fillSample").addEventListener("click", () => { $("#secret").value = KINDS[currentKind()].sample; $("#secret").focus(); });
 
 function showStep(n) {
   step = n;
@@ -210,11 +250,11 @@ function showStep(n) {
 }
 
 function validate(n) {
-  if (n === 1 && !$("#secret").value.trim()) return "Give the creature something to guard.";
-  if (n === 2 && !$("#heirName").value.trim()) return "Name your heir.";
+  if (n === 1 && !$("#secret").value.trim()) return "The creature needs something to guard. Even a grocery list counts.";
+  if (n === 2 && !$("#heirName").value.trim()) return "Name your heir. \"Whoever finds my laptop\" is not an inheritance plan.";
   if (n === 2) {
     const e = $("#heirEmail").value.trim();
-    if (e && !/^\S+@\S+\.\S+$/.test(e)) return "That email looks wrong.";
+    if (e && !/^\S+@\S+\.\S+$/.test(e)) return "That email looks cursed. Check the spelling.";
   }
   return null;
 }
@@ -272,10 +312,11 @@ async function throwSwitch() {
     log("Key split 2-of-3: A → heir, B → owner, C → chain clock.");
     save();
     $("#secret").value = "";
+    $("#keepsakes").hidden = false;
     showStep(4);
   } catch (e) {
     console.error(e);
-    toast("The switch failed. Is this browser too old for WebCrypto?");
+    toast("The switch failed. This browser is too old for our kind of magic. Try a newer one.");
   } finally {
     btn.disabled = false;
   }
@@ -356,7 +397,7 @@ $("#pulseBtn").addEventListener("click", () => {
   if (was === "ALIVE") log("Pulse received. Timer reset.", "v");
   prevState = was; // transition handler logs revival
   if (navigator.vibrate) navigator.vibrate(30);
-  toast("Pulse received. Still alive.");
+  toast("Pulse received. Still alive. The raven looks disappointed.");
   save();
 });
 
@@ -376,7 +417,11 @@ $("#resetVault").addEventListener("click", () => {
   $$(".shard code").forEach((c) => (c.textContent = "—"));
   showStep(1);
   renderVitals(true);
-  toast("Creature destroyed. Nothing was kept.");
+  revealed = false;
+  $("#reveal").hidden = true;
+  $("#shardInput").value = "";
+  $("#keepsakes").hidden = true;
+  toast("Creature destroyed. Nothing was kept, not even a toe.");
 });
 
 /* =========================================================
@@ -392,7 +437,7 @@ function renderClaim() {
   const box = $("#releasedBox");
   box.classList.toggle("hot", released);
   box.textContent = !vault
-    ? "No vault here. Assemble one on the operating table first."
+    ? "Nothing buried here yet. Assemble a vault on the operating table first."
     : released
     ? vault.shards.c
     : `Locked by the chain clock. Opens in ${fmtDur(releaseAt(vault) - vault.simNow)} if no pulse arrives.`;
@@ -400,7 +445,7 @@ function renderClaim() {
 }
 
 $("#pasteDemoShard").addEventListener("click", () => {
-  if (!vault) return toast("No vault yet. Assemble one first.");
+  if (!vault) return toast("Nothing to dig up yet. Assemble a vault first.");
   $("#shardInput").value = vault.shards.a;
 });
 
@@ -408,30 +453,143 @@ $("#claimBtn").addEventListener("click", async () => {
   const errEl = $("#claimError");
   errEl.textContent = "";
   try {
-    if (!vault) throw new Error("No vault on this device.");
-    if (stateOf(vault) !== "RELEASED") throw new Error("Shard C is still locked. The owner may still be alive.");
+    if (!vault) throw new Error("No vault on this device. Nothing to dig up.");
+    if (stateOf(vault) !== "RELEASED") throw new Error("Shard C is still locked. The owner may still be alive (awkward).");
     const a = decodeShare($("#shardInput").value);
     const c = decodeShare(vault.shards.c);
-    if (a.x === c.x) throw new Error("You need two different shards.");
+    if (a.x === c.x) throw new Error("Two copies of the same shard is still one shard. You need a different piece.");
     const keyBytes = combine([a, c]);
     const key = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["decrypt"]);
     let pt;
     try {
       pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromHex(vault.iv) }, key, fromHex(vault.ct));
     } catch {
-      throw new Error("The parts don't fit. That shard belongs to another vault.");
+      throw new Error("The parts don't fit. That shard belongs to another creature.");
     }
     lightning();
     $("#tomb").classList.add("risen");
     setTimeout(() => $("#tomb").classList.remove("risen"), 600);
     $("#revealText").textContent = new TextDecoder().decode(pt);
+    $("#letterMeta").textContent = `Left for ${vault.heirName} · opened on ${dayStamp(vault)}`;
+    const letter = $(".letter"); letter.style.animation = "none"; void letter.offsetWidth; letter.style.animation = "";
     $("#reveal").hidden = false;
     $("#reveal").scrollIntoView({ behavior: "smooth", block: "center" });
     log(`${vault.heirName} rebuilt the key from shards A + C.`, "e");
+    revealed = true;
   } catch (e) {
     errEl.textContent = e.message;
     $("#reveal").hidden = true;
   }
+});
+
+/* =========================================================
+   THE RAVEN: a guide that always says what to tap next
+   ========================================================= */
+let revealed = false;
+let guideHushed = false;
+try { guideHushed = localStorage.getItem("deadbolt.guide.hushed") === "1"; } catch {}
+let guideKey = "";
+let guideAction = null;
+const curRoute = () => (location.hash.replace(/^#/, "") || "/").split("?")[0];
+const go = (hash) => () => { location.hash = hash; };
+
+function guideFor() {
+  const r = curRoute();
+  const st = stateOf(vault);
+  if (r === "/table") {
+    if (forged) return ["It's alive! Shard A belongs to your heir. Print their card now. Mortals always forget.", "Open the vitals", go("#/vitals")];
+    if (step === 1) return ["What should outlive you? I'd go with a letter. My sample has wallet words, land documents and a debt to collect in it.", "Fill a sample for me",
+      () => { if (!$("#secret").value.trim()) $("#secret").value = KINDS[currentKind()].sample; showStep(2); }];
+    if (step === 2) return ["Who gets it when you're gone? Choose carefully. Ravens remember.", "Use a sample heir",
+      () => { if (!$("#heirName").value.trim()) $("#heirName").value = "Aisha Bello"; if (!$("#heirEmail").value.trim()) $("#heirEmail").value = "aisha@example.com"; showStep(3); }];
+    if (step === 3) return ["How often should I check you're still breathing? Thirty days is sensible. Seven if you're dramatic.", "Thirty days is fine", () => showStep(4)];
+    return ["Pull the lever. Your secret gets locked right here in this browser. Only scrambled noise ever leaves.", "⚡ Throw the switch", () => $("#nextBtn").click()];
+  }
+  if (r === "/vitals") {
+    if (!vault) return ["An empty table. Deeply unsettling. Let's build you a creature.", "To the operating table", go("#/table")];
+    if (st === "ALIVE") return ["Steady heartbeat. Now imagine you stop answering your check-ins. I'll skip ahead and show you what happens.", "Skip to a missed check-in",
+      () => { vault.simNow = Math.max(vault.simNow, dueAt(vault) + 1000); }];
+    if (st === "FLATLINE") return ["You missed a check-in. I'm pecking at your inbox right now. Tap \"I'm alive\" and all is forgiven.", "Ignore it",
+      () => { vault.simNow = Math.max(vault.simNow, dueAt(vault) + FLATLINE_DAYS * DAY + 1000); }];
+    if (st === "GRACE") return ["Grace period: 14 days to prove you're alive. One tap undoes everything. Or…", "Let it lapse",
+      () => { vault.simNow = Math.max(vault.simNow, releaseAt(vault) + 1000); }];
+    return ["The chain clock has spoken. Shard C is free. Your heir may now read the will.", "Go to the will", go("#/claim")];
+  }
+  if (r === "/claim") {
+    if (!vault) return ["Nothing buried here yet. Make a vault first, then come back to dig.", "To the operating table", go("#/table")];
+    if (st !== "RELEASED") return ["Too soon. The owner may still be breathing. Shard C stays locked until the grace period runs out.", "Check the vitals", go("#/vitals")];
+    if (!revealed) return ["Paste your shard A, then reanimate. I kept a copy of the demo heir's. Ravens hoard things.", "Paste and reanimate",
+      () => { $("#pasteDemoShard").click(); $("#claimBtn").click(); }];
+    return ["It lives again. No lawyer, no company, no early release. That's DeadBolt.", "Start over", () => { $("#resetVault").click(); location.hash = "#/"; }];
+  }
+  if (!vault) return ["Your keys die with you. Unless… Want to watch the whole experiment in 60 seconds? I'll guide you.", "Run the experiment", go("#/table")];
+  if (st === "RELEASED") return ["Your creature has risen. Go and see what it left behind.", "Go to the will", go("#/claim")];
+  return ["Your creature is alive and twitching. Go and check its vitals.", "Open the vitals", go("#/vitals")];
+}
+
+function renderGuide(force = false) {
+  const key = [curRoute(), step, !!forged, vault ? stateOf(vault) : "none", revealed, guideHushed].join("|");
+  if (key === guideKey && !force) return;
+  guideKey = key;
+  const [text, label, run] = guideFor();
+  guideAction = run;
+  $("#guideText").textContent = text;
+  $("#guideDo").textContent = label;
+  $("#guide").classList.toggle("hushed", guideHushed);
+  $("#guideBird").setAttribute("aria-expanded", String(!guideHushed));
+  document.body.classList.toggle("guide-open", !guideHushed);
+  const bubble = $("#guideBubble");
+  bubble.classList.remove("swap"); void bubble.offsetWidth; bubble.classList.add("swap");
+  const bird = $("#guideBird");
+  bird.classList.remove("hop"); void bird.offsetWidth; bird.classList.add("hop");
+}
+function setHushed(v) {
+  guideHushed = v;
+  try { localStorage.setItem("deadbolt.guide.hushed", v ? "1" : "0"); } catch {}
+  renderGuide(true);
+}
+$("#guideDo").addEventListener("click", () => { if (guideAction) guideAction(); renderGuide(true); });
+$("#guideHush").addEventListener("click", () => setHushed(true));
+$("#guideBird").addEventListener("click", () => setHushed(!guideHushed));
+$$("[data-tour]").forEach((el) => el.addEventListener("click", () => setHushed(false)));
+(function guideLoop() { renderGuide(); requestAnimationFrame(guideLoop); })();
+
+/* ---------------- keepsakes: heir card + owner backup ---------------- */
+$("#printCard").addEventListener("click", () => {
+  if (!vault) return;
+  const claimUrl = `${location.origin}${location.pathname}#/claim`;
+  $("#heirCard").innerHTML = `<div class="hc">
+    <p class="hc-top">HERE RESTS A KEY</p>
+    <h1>For ${escapeHtml(vault.heirName)}</h1>
+    <p>Someone who cares about you used DeadBolt to leave you something private. This card is your half of the key.
+    On its own it opens nothing, so it's safe to keep in a drawer.</p>
+    <h2>When the time comes</h2>
+    <ol>
+      <li>DeadBolt will let you know when the vault opens.</li>
+      <li>Go to <b>${escapeHtml(claimUrl)}</b></li>
+      <li>Type or paste the code below, then press <b>Reanimate</b>.</li>
+    </ol>
+    <p class="hc-code">${escapeHtml(vault.shards.a)}</p>
+    <p class="hc-foot">Keep this card private. Don't photograph it or post it online.</p>
+  </div>`;
+  window.print();
+});
+$("#downloadBackup").addEventListener("click", () => {
+  if (!vault) return;
+  const text = [
+    "DeadBolt owner backup (shard B)",
+    "",
+    "This is YOUR piece of the key, not your heir's.",
+    "Keep it somewhere safe and offline. On its own it opens nothing.",
+    "",
+    vault.shards.b,
+    "",
+  ].join("\n");
+  const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+  const link = Object.assign(document.createElement("a"), { href: url, download: "deadbolt-backup-shard-B.txt" });
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast("Backup saved. Hide it somewhere better than your Downloads folder.");
 });
 
 /* ---------------- motion: reveal on scroll ---------------- */
