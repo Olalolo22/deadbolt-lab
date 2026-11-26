@@ -43,7 +43,10 @@
     - _Requirements: 2.1–2.5_
   - [ ] 7.2 "Throw the switch": encrypt, split, animate, drop the plaintext and key, clear the input
     - _Requirements: 2.6–2.8_
-  - [ ] 7.3 Heir card (printable shard A) and owner backup download (shard B); hand C to `ChainClock.lockShard`
+  - [ ] 7.3 Heir card (printable shard A) and the password-sealed owner backup (shard B, never unsealed); hand C to `ChainClock.lockShard`
+  - [ ] 7.4 Break-glass route on the claim page: heir card + sealed backup + password, no chain needed
+    - Unit test: seal/open round-trip; wrong password and wrong-vault backups reveal nothing
+    - _Requirements: 5a.1–5a.6_
     - Invariant test: mocked `fetch` never receives plaintext, the key, A or B
     - _Requirements: 2.9–2.11_
 

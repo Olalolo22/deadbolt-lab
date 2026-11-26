@@ -454,6 +454,8 @@ $("#resetVault").addEventListener("click", () => {
   showStep(1);
   renderVitals(true);
   revealed = false;
+  lastSealed = null;
+  $("#sealForm").hidden = true;
   $("#reveal").hidden = true;
   $("#shardInput").value = "";
   $("#keepsakes").hidden = true;
@@ -493,30 +495,33 @@ $("#claimBtn").addEventListener("click", async () => {
     if (stateOf(vault) !== "RELEASED") throw new Error("Shard C is still locked. The owner may still be alive (awkward).");
     const a = decodeShare($("#shardInput").value);
     const c = decodeShare(vault.shards.c);
-    if (a.x === c.x) throw new Error("Two copies of the same shard is still one shard. You need a different piece.");
-    const keyBytes = combine([a, c]);
-    const key = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["decrypt"]);
-    let pt;
-    try {
-      pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromHex(vault.iv) }, key, fromHex(vault.ct));
-    } catch {
-      throw new Error("The parts don't fit. That shard belongs to another creature.");
-    }
-    lightning();
-    $("#tomb").classList.add("risen");
-    setTimeout(() => $("#tomb").classList.remove("risen"), 600);
-    $("#revealText").textContent = new TextDecoder().decode(pt);
-    $("#letterMeta").textContent = `Left for ${vault.heirName} · opened on ${dayStamp(vault)}`;
-    const letter = $(".letter"); letter.style.animation = "none"; void letter.offsetWidth; letter.style.animation = "";
-    $("#reveal").hidden = false;
-    $("#reveal").scrollIntoView({ behavior: "smooth", block: "center" });
-    log(`${vault.heirName} rebuilt the key from shards A + C.`, "e");
-    revealed = true;
+    await reanimate([a, c], "shards A + C", "opened");
   } catch (e) {
     errEl.textContent = e.message;
     $("#reveal").hidden = true;
   }
 });
+
+async function reanimate(pieces, how, verb) {
+  if (pieces[0].x === pieces[1].x) throw new Error("Two copies of the same shard is still one shard. You need a different piece.");
+  const key = await crypto.subtle.importKey("raw", combine(pieces), "AES-GCM", false, ["decrypt"]);
+  let pt;
+  try {
+    pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromHex(vault.iv) }, key, fromHex(vault.ct));
+  } catch {
+    throw new Error("The parts don't fit. That shard belongs to another creature.");
+  }
+  lightning();
+  $("#tomb").classList.add("risen");
+  setTimeout(() => $("#tomb").classList.remove("risen"), 600);
+  $("#revealText").textContent = new TextDecoder().decode(pt);
+  $("#letterMeta").textContent = `Left for ${vault.heirName} · ${verb} on ${dayStamp(vault)}`;
+  const letter = $(".letter"); letter.style.animation = "none"; void letter.offsetWidth; letter.style.animation = "";
+  $("#reveal").hidden = false;
+  $("#reveal").scrollIntoView({ behavior: "smooth", block: "center" });
+  log(`${vault.heirName} rebuilt the key from ${how}.`, "e");
+  revealed = true;
+}
 
 /* =========================================================
    SIGNED CHECK-INS (simulated Google sign-in, zkLogin in the real build)
@@ -612,7 +617,7 @@ function guideFor() {
   const r = curRoute();
   const st = stateOf(vault);
   if (r === "/table") {
-    if (forged) return ["It's alive! Shard A belongs to your heir. Print their card now. Mortals always forget.", "Open the vitals", go("#/vitals")];
+    if (forged) return ["It's alive! Print your heir's card, and seal your own backup with a password. Mortals always forget.", "Open the vitals", go("#/vitals")];
     if (step === 1) return ["What should outlive you? I'd go with a letter. My sample has wallet words, land documents and a debt to collect in it.", "Fill a sample for me",
       () => { if (!$("#secret").value.trim()) $("#secret").value = KINDS[currentKind()].sample; showStep(2); }];
     if (step === 2) return ["Who gets it when you're gone? Choose carefully. Ravens remember.", "Use a sample heir",
@@ -639,6 +644,7 @@ function guideFor() {
   }
   if (r === "/claim") {
     if (!vault) return ["Nothing buried here yet. Make a vault first, then come back to dig.", "To the operating table", go("#/table")];
+    if (revealed) return [st === "RELEASED" ? "It lives again. No lawyer, no company, no early release. That's DeadBolt." : "Opened by break-glass: the card, the sealed backup and the password, no chain needed. That's the fallback working.", "Start over", () => { $("#resetVault").click(); location.hash = "#/"; }];
     if (st !== "RELEASED") return ["Too soon. The owner may still be breathing. Shard C stays locked until the grace period runs out.", "Check the vitals", go("#/vitals")];
     if (!revealed) return ["Paste your shard A, then reanimate. I kept a copy of the demo heir's. Ravens hoard things.", "Paste and reanimate",
       () => { $("#pasteDemoShard").click(); $("#claimBtn").click(); }];
@@ -696,22 +702,98 @@ $("#printCard").addEventListener("click", () => {
   </div>`;
   window.print();
 });
-$("#downloadBackup").addEventListener("click", () => {
-  if (!vault) return;
-  const text = [
-    "DeadBolt owner backup (shard B)",
-    "",
-    "This is YOUR piece of the key, not your heir's.",
-    "Keep it somewhere safe and offline. On its own it opens nothing.",
-    "",
-    vault.shards.b,
-    "",
-  ].join("\n");
+/* ---------------- sealed backup (shard B never leaves unsealed) ---------------- */
+const KDF_ITERATIONS = 600_000; // OWASP minimum for PBKDF2-HMAC-SHA256 (the real build: Argon2id)
+let lastSealed = null;
+
+async function passwordKey(password, salt) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt, iterations: KDF_ITERATIONS },
+    base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+async function sealBackup(shard, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await passwordKey(password, salt);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(shard)));
+  return `DBB1-${toHex(salt)}-${toHex(iv)}-${toHex(ct)}`;
+}
+async function openBackup(sealed, password) {
+  const m = sealed.trim().match(/^DBB1-([0-9a-f]{32})-([0-9a-f]{24})-([0-9a-f]+)$/i);
+  if (!m) throw new Error("That's not a sealed DeadBolt backup. They start with DBB1-.");
+  try {
+    const key = await passwordKey(password, fromHex(m[1]));
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromHex(m[2]) }, key, fromHex(m[3]));
+    return decodeShare(new TextDecoder().decode(pt));
+  } catch {
+    throw new Error("Wrong password, or that backup belongs to another vault.");
+  }
+}
+function downloadText(name, text) {
   const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
-  const link = Object.assign(document.createElement("a"), { href: url, download: "deadbolt-backup-shard-B.txt" });
+  const link = Object.assign(document.createElement("a"), { href: url, download: name });
   document.body.appendChild(link); link.click(); link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  toast("Backup saved. Hide it somewhere better than your Downloads folder.");
+}
+
+$("#downloadBackup").addEventListener("click", () => {
+  if (!vault) return;
+  $("#sealForm").hidden = false;
+  $("#sealPw").focus();
+});
+$("#sealGo").addEventListener("click", async () => {
+  const err = $("#sealErr");
+  err.textContent = "";
+  const pw = $("#sealPw").value, pw2 = $("#sealPw2").value;
+  if (pw.length < 10) { err.textContent = "Ten characters at least. A short sentence works well."; return; }
+  if (pw !== pw2) { err.textContent = "Those two don't match. Ravens notice these things."; return; }
+  const btn = $("#sealGo");
+  btn.disabled = true; btn.textContent = "Sealing…";
+  try {
+    const sealed = await sealBackup(vault.shards.b, pw);
+    lastSealed = sealed;
+    downloadText("deadbolt-sealed-backup.txt", [
+      "DeadBolt sealed backup (shard B)",
+      "",
+      "This piece is locked with a password only the owner knows. On its own it opens nothing.",
+      "Break-glass: with the heir's card AND the password, it opens the vault even if the chain or DeadBolt is gone.",
+      "Keep this file and the password in different places. Leave them only with someone you'd trust with the vault itself.",
+      "",
+      sealed,
+      "",
+    ].join("\n"));
+    log("Owner backup sealed with a password. DeadBolt never saw the password.", "v");
+    $("#sealPw").value = ""; $("#sealPw2").value = "";
+    $("#sealForm").hidden = true;
+    toast("Backup sealed and saved. Keep the file and the password in different places.");
+  } catch (e) {
+    console.error(e);
+    err.textContent = "Sealing failed. This browser might be too old for it.";
+  } finally {
+    btn.disabled = false; btn.textContent = "Seal and download";
+  }
+});
+
+/* ---------------- break-glass: card + sealed backup + password, no chain needed ---------------- */
+$("#breakglass").addEventListener("toggle", () => { $("#bgPasteDemo").hidden = !lastSealed; });
+$("#bgPasteDemo").addEventListener("click", () => { if (lastSealed) $("#bgSealed").value = lastSealed; });
+$("#bgGo").addEventListener("click", async () => {
+  const err = $("#bgErr");
+  err.textContent = "";
+  const btn = $("#bgGo");
+  try {
+    if (!vault) throw new Error("No vault on this device. Nothing to dig up.");
+    if (!$("#shardInput").value.trim()) throw new Error("Paste your card (shard A) above first. The backup alone opens nothing.");
+    const a = decodeShare($("#shardInput").value);
+    btn.disabled = true; btn.textContent = "Checking the password…";
+    const b = await openBackup($("#bgSealed").value, $("#bgPw").value);
+    await reanimate([a, b], "the heir's card and the sealed backup, without the chain (break-glass)", "opened by break-glass");
+    $("#bgPw").value = "";
+  } catch (e) {
+    err.textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "Break the glass";
+  }
 });
 
 /* ---------------- motion: reveal on scroll ---------------- */

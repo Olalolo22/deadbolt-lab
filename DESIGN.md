@@ -68,6 +68,13 @@ transform, filter, clip-path or SVG stroke. All of it switches off under `prefer
 
 The ECG is the only thing that moves continuously. No parallax, cursor effects or looping decoration.
 
+## Sealed backup and break-glass
+
+Shard B never leaves the browser unsealed. The owner picks a password (10+ characters, typed twice, no reset) and
+downloads a sealed backup. On the claim page, a quiet "break-glass route" lets the heir combine their card with the
+sealed backup and its password when the chain or DeadBolt has gone silent. The UI always states the trade-off: whoever
+holds the backup and its password, together with the heir, could open the vault early.
+
 ## Lifecycle state machine (copy must match)
 
 | State | Trigger | Headline | Colour |
