@@ -139,6 +139,13 @@ public fun pulse(v: &mut Vault, clock: &Clock, ctx: &TxContext) {
 The check-in page builds this transaction, the owner signs it through Enoki's zkLogin wallet, and DeadBolt's server
 asks Enoki to sponsor and submit it. The fallback path signs and pays from the same address with the owner's own gas.
 
+### Messages
+
+A small worker watches each vault's on-chain state (last check-in, deadlines) and sends exactly one message per event
+per cycle: `r1`, `r2` (owner reminders), `grace` (owner, every channel, daily) and `release` (heir). A cycle is keyed
+by the last check-in time, so a new check-in starts a fresh cycle. The worker only ever holds contact details and
+public chain state, never secrets, shards or invitation codes. Templates live in one file so the copy can be reviewed.
+
 ### Heir-bound release (Sui + Seal)
 
 ```move
