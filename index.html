@@ -498,12 +498,100 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
 .claim-error { color: var(--stitch); font-size: 0.8rem; min-height: 1.2em; margin: 12px 0 0; }
 
 .reveal { margin-top: 24px; border: 1px solid var(--volt); border-radius: var(--r); padding: 26px; background: rgba(157,255,58,.04); box-shadow: 0 0 60px rgba(157,255,58,.08); animation: rise .6s ease both; }
-.reveal-text { white-space: pre-wrap; word-break: break-word; font-size: 1rem; color: var(--bone); margin: 0 0 12px; line-height: 1.7; }
+.reveal-text { white-space: pre-wrap; word-break: break-word; margin: 0; font: 400 clamp(1.08rem, 3.2vw, 1.26rem)/1.65 var(--f-display); color: var(--ink); }
+.letter { background: var(--paper); color: var(--ink); border-radius: 6px; padding: clamp(22px, 5vw, 40px); margin: 4px 0 14px;
+  box-shadow: 0 30px 60px -30px #000, inset 0 0 60px rgba(120,100,60,.12); transform-origin: top center; animation: unfold .9s cubic-bezier(.2,.8,.2,1) both; }
+.letter-meta { font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: #6b6556; margin: 0 0 18px; padding-bottom: 12px; border-bottom: 1px solid rgba(21,19,15,.15); }
+@keyframes unfold { from { opacity: 0; transform: perspective(900px) rotateX(-14deg) scaleY(.94); } to { opacity: 1; transform: none; } }
+
+/* what people leave behind */
+.leave { margin: 56px 0 40px; }
+.leave h2 { font-size: clamp(2.2rem, 6.4vw, 3.8rem); margin: 0 0 26px; }
+.leave-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.leave-grid article { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; }
+.leave-tag { font-size: .66rem; letter-spacing: .16em; text-transform: uppercase; color: var(--volt); }
+.leave-grid h3 { font: 400 1.6rem/1.1 var(--f-display); margin: 10px 0 8px; }
+.leave-grid p { margin: 0; color: var(--bone-2); font-size: .92rem; }
+@media (max-width: 900px) { .leave-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .leave-grid { grid-template-columns: 1fr; } }
+
+/* kind chips on the create step */
+.kind-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+.kind { position: relative; cursor: pointer; }
+.kind input { position: absolute; opacity: 0; pointer-events: none; }
+.kind span { display: inline-block; padding: 9px 15px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--bone-2); font-size: .88rem; transition: all .2s; }
+.kind input:checked + span { border-color: var(--volt); color: #071003; background: var(--volt); }
+.kind input:focus-visible + span { outline: 2px solid var(--volt); outline-offset: 2px; }
 
 /* ---------- footer / toast ---------- */
 .foot { max-width: var(--max); margin: 0 auto; padding: 24px var(--pad) calc(24px + env(safe-area-inset-bottom)); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 0.7rem; color: var(--muted); border-top: 1px solid var(--line); }
 .toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); background: var(--bone); color: var(--bg); padding: 11px 18px; border-radius: 999px; font-size: 0.8rem; opacity: 0; pointer-events: none; transition: all .3s; z-index: 70; max-width: 90vw; text-align: center; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- the problem ---------- */
+.problem { margin: 0 0 40px; padding-top: 30px; }
+.problem h2 { font-size: clamp(2.2rem, 6.4vw, 3.8rem); margin: 0 0 26px; }
+.problem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.problem-grid > div { background: var(--bg); padding: 24px 20px; display: flex; flex-direction: column; gap: 10px; }
+.problem-grid b { font: 400 clamp(2.4rem, 6vw, 3.4rem)/1 var(--f-display); color: var(--stitch); }
+.problem-grid span { color: var(--bone-2); font-size: .94rem; }
+.problem-grid sup, .sources sup { color: var(--muted); font-family: var(--f-mono); font-size: .62em; }
+.problem-foot { margin: 22px 0 8px; color: var(--bone-2); max-width: 720px; }
+.sources { font-size: .66rem; color: var(--muted); margin: 0; }
+.sources a { color: var(--bone-2); }
+@media (max-width: 700px) { .problem-grid { grid-template-columns: 1fr; } }
+
+/* ---------- keepsakes ---------- */
+.btn-sm { padding: 9px 15px; font-size: .84rem; }
+.keepsakes { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+
+/* ---------- the raven (guide) ---------- */
+.guide { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 65;
+  display: flex; align-items: flex-end; gap: 10px; max-width: min(390px, calc(100vw - 32px)); animation: rise .6s 1.9s both; }
+.guide-bubble { background: rgba(16,22,20,.95); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--line-2); border-radius: 16px 16px 4px 16px; padding: 14px 16px 12px; box-shadow: 0 24px 60px -24px #000; }
+.guide-bubble.swap { animation: rise .35s both; }
+.guide-name { font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; color: var(--volt); margin: 0 0 6px; }
+.guide-name span { color: var(--muted); }
+.guide-text { margin: 0 0 12px; font-size: .92rem; line-height: 1.45; color: var(--bone); }
+.guide-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.guide-actions .link-btn { color: var(--muted); }
+.guide-bird { flex: none; width: 58px; height: 58px; border-radius: 50%; background: #0b0f0d; border: 1px solid var(--line-2);
+  display: grid; place-items: center; cursor: pointer; padding: 0; box-shadow: 0 0 0 5px rgba(157,255,58,.05), 0 12px 30px -10px #000; }
+.guide-bird svg { width: 40px; height: 40px; }
+.guide-bird.hop { animation: hop .55s ease; }
+@keyframes hop { 30% { transform: translateY(-9px) rotate(-7deg); } 60% { transform: translateY(0) rotate(4deg); } }
+.guide.hushed .guide-bubble { display: none; }
+@media (max-width: 600px) {
+  .guide { left: 12px; right: 12px; max-width: none; }
+  .guide-bubble { flex: 1; padding: 11px 13px 10px; }
+  .guide-name { margin-bottom: 4px; }
+  .guide-text { font-size: .86rem; margin-bottom: 9px; }
+  .guide .btn-sm { padding: 8px 13px; font-size: .8rem; }
+  .guide-bird { width: 48px; height: 48px; }
+  .guide-bird svg { width: 34px; height: 34px; }
+  body.guide-open { padding-bottom: 150px; }
+}
+/* toasts move to the top so they never collide with the guide */
+.toast { top: calc(76px + env(safe-area-inset-top)); bottom: auto; transform: translate(-50%, -10px); }
+.toast.show { transform: translate(-50%, 0); }
+@media (max-width: 760px) { .toast { top: calc(118px + env(safe-area-inset-top)); } }
+
+/* ---------- printable heir card ---------- */
+.heir-card { display: none; }
+@media print {
+  @page { margin: 14mm; }
+  body { background: #fff !important; }
+  body > *:not(.heir-card) { display: none !important; }
+  .heir-card { display: block !important; color: #111; font: 12pt/1.5 Georgia, "Times New Roman", serif; }
+  .hc { max-width: 150mm; margin: 0 auto; border: 2px solid #111; border-radius: 80mm 80mm 6mm 6mm; padding: 26mm 16mm 12mm; text-align: center; }
+  .hc-top { letter-spacing: .3em; font: 9pt monospace; margin: 0; }
+  .hc h1 { font-size: 26pt; margin: 6mm 0 4mm; font-weight: 400; }
+  .hc h2 { font-size: 13pt; margin: 6mm 0 2mm; }
+  .hc ol { text-align: left; margin: 0 auto; max-width: 115mm; padding-left: 6mm; }
+  .hc-code { font: 9pt monospace; word-break: break-all; border: 1px dashed #111; padding: 4mm; margin: 6mm 0; text-align: left; }
+  .hc-foot { font-size: 9pt; color: #444; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -540,11 +628,12 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
         <h1 class="display">It's alive.<br /><em>Until it isn't.</em></h1>
         <p class="lede">
           DeadBolt stitches three technologies that were never meant to touch: <strong>1979 cryptography</strong>,
-          a <strong>Web2 heartbeat</strong> and an <strong>on-chain clock</strong>. Together they guard your keys while you
-          live and hand them to your heir when you don't. No lawyer reads them, and no server decides you're gone.
+          a <strong>Web2 heartbeat</strong> and an <strong>on-chain clock</strong>. Together they guard what only you know
+          (keys, passwords, the letter you never sent) while you live, and hand it to your family when you don't.
+          No lawyer reads it, and no server decides you're gone.
         </p>
         <div class="hero-ctas">
-          <a class="btn btn-volt" href="#/table">Enter the lab</a>
+          <a class="btn btn-volt" href="#/table" data-tour>Run the 60-second experiment</a>
           <a class="btn btn-ghost" href="#anatomy">See the anatomy</a>
         </div>
         <div class="hero-monitor" aria-hidden="true">
@@ -552,6 +641,30 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
           <div class="hero-monitor-label mono"><span class="blink">●</span> SUBJECT ALIVE · LAST PULSE 0d AGO</div>
         </div>
       </div>
+
+      <section class="problem" aria-labelledby="problemTitle">
+        <p class="kicker mono">The problem</p>
+        <h2 class="display" id="problemTitle">Your keys die with you.</h2>
+        <div class="problem-grid">
+          <div><b>$20B+</b><span>in Bitcoin is locked for good because owners died without sharing their keys.<sup>1</sup></span></div>
+          <div><b>~90%</b><span>of crypto holders worry about inheritance. Only a small fraction ever make a plan.<sup>2</sup></span></div>
+          <div><b>7%</b><span>of crypto holders use a will, compared with 32% of other investors.<sup>3</sup></span></div>
+        </div>
+        <p class="problem-foot">Crypto is just where the loss is easiest to count. Every family loses the same things when someone goes quietly: what only that person knew.</p>
+        <p class="sources mono">Sources: <sup>1</sup> Law Office of Andrew Kern, <sup>2</sup> Ledger Academy, both via <a href="https://blockonomi.com/what-happens-to-crypto-when-you-die-key-statistics-and-facts/" rel="noopener" target="_blank">Blockonomi</a> · <sup>3</sup> Cremation Institute survey via <a href="https://cointelegraph.com/news/study-89-worry-what-happens-to-their-crypto-after-they-die" rel="noopener" target="_blank">Cointelegraph</a></p>
+      </section>
+
+      <section class="leave" aria-labelledby="leaveTitle">
+        <p class="kicker mono">What people leave behind</p>
+        <h2 class="display" id="leaveTitle">Anything only you know.</h2>
+        <div class="leave-grid">
+          <article><span class="leave-tag mono">Keys</span><h3>The wallet words</h3><p>Seed phrases and hardware wallet PINs. Lose them and the money is gone for good.</p></article>
+          <article><span class="leave-tag mono">Access</span><h3>The passwords</h3><p>Email, bank app and phone passcode. Without them your family is locked out of everything.</p></article>
+          <article><span class="leave-tag mono">Instructions</span><h3>Where things are</h3><p>The land documents, the insurance policy, the lawyer's name, who still owes you money.</p></article>
+          <article><span class="leave-tag mono">Words</span><h3>The letter</h3><p>What you meant to say and never got round to. Some things should only be read later.</p></article>
+        </div>
+        <p class="problem-foot">It's open source, so it outlives this hackathon.</p>
+      </section>
 
       <div class="stat-strip">
         <div><span class="stat-num">2-of-3</span><span class="stat-label">shards rebuild your secret</span></div>
@@ -658,12 +771,18 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
         <!-- step 1 -->
         <fieldset data-panel="1">
           <legend class="display">What should outlive you?</legend>
+          <div class="kind-row" role="radiogroup" aria-label="What are you leaving?">
+            <label class="kind"><input type="radio" name="kind" value="letter" checked /><span>A letter</span></label>
+            <label class="kind"><input type="radio" name="kind" value="keys" /><span>Keys</span></label>
+            <label class="kind"><input type="radio" name="kind" value="access" /><span>Passwords</span></label>
+            <label class="kind"><input type="radio" name="kind" value="instructions" /><span>Instructions</span></label>
+          </div>
           <label class="field">
             <span>The secret</span>
-            <textarea id="secret" rows="5" placeholder="Seed phrase, private key, a letter, the Wi-Fi password…" required></textarea>
-            <small class="muted">Encrypted with AES-256-GCM before anything else happens.</small>
+            <textarea id="secret" rows="7" placeholder="Dear…" required></textarea>
+            <small class="muted">Locked with strong encryption in this browser before anything else happens.</small>
           </label>
-          <button type="button" class="link-btn mono" id="fillSample">Use a sample seed phrase</button>
+          <button type="button" class="link-btn mono" id="fillSample">Use a sample letter</button>
         </fieldset>
 
         <!-- step 2 -->
@@ -708,6 +827,10 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
             </div>
           </div>
           <p class="muted small" id="stitchCaption">The key will be split into 3 shards. Any 2 rebuild it.</p>
+          <div class="keepsakes" id="keepsakes" hidden>
+            <button type="button" class="btn btn-ghost btn-sm" id="printCard">Print the heir's card</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="downloadBackup">Download my backup (shard B)</button>
+          </div>
         </fieldset>
 
         <div class="form-nav">
@@ -721,7 +844,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
     <section class="route" data-route="/vitals" hidden>
       <div class="empty" id="vitalsEmpty">
         <h1 class="display">The table is empty.</h1>
-        <p class="muted">No creature yet. Assemble one first.</p>
+        <p class="muted">No creature yet. Just a cold slab and a faint smell of ozone.</p>
         <a class="btn btn-volt" href="#/table">Go to the operating table</a>
       </div>
 
@@ -834,8 +957,11 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
 
       <div class="reveal" id="reveal" hidden>
         <p class="kicker mono">It's alive</p>
-        <pre class="reveal-text mono" id="revealText"></pre>
-        <p class="muted small">Rebuilt from shards A + C and decrypted locally. DeadBolt never saw this.</p>
+        <div class="letter">
+          <p class="letter-meta mono" id="letterMeta"></p>
+          <pre class="reveal-text" id="revealText"></pre>
+        </div>
+        <p class="muted small">Rebuilt from shards A + C and decrypted in this browser. DeadBolt never saw this.</p>
       </div>
     </section>
   </main>
@@ -847,6 +973,20 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
   </footer>
 
   <div class="toast mono" id="toast" role="status" aria-live="polite"></div>
+
+  <aside class="guide" id="guide" aria-label="Guide">
+    <div class="guide-bubble" id="guideBubble" role="status" aria-live="polite">
+      <p class="guide-name mono">The Raven <span>· your guide</span></p>
+      <p class="guide-text" id="guideText"></p>
+      <div class="guide-actions">
+        <button type="button" class="btn btn-volt btn-sm" id="guideDo"></button>
+        <button type="button" class="link-btn mono" id="guideHush">Hush</button>
+      </div>
+    </div>
+    <button type="button" class="guide-bird" id="guideBird" aria-label="Ask the raven what to do next" aria-expanded="true"><svg viewBox="3 6 61 56" aria-hidden="true"><path d="M8 59 L17 50 C14 44 15 37 20 32 C25 27 31 23 35 20 C35 16 37 12 41 10.5 C45 9 49 10 51 13 L62 17.5 L51 20 C51.5 25 50 29.5 47.5 32.5 C46.5 39.5 41 45.5 33 48.5 L22 54 Z" fill="#0b0f0d" stroke="#c9c1ae" stroke-width="2" stroke-linejoin="round"/><path d="M22 40 C29 43.5 37 42 43.5 35.5" stroke="#c9c1ae" stroke-width="1.1" fill="none" stroke-dasharray="2 2"/><path d="M30 49.5 L29 58.5 M35 47.8 L36 58.5" stroke="#c9c1ae" stroke-width="1.9" stroke-linecap="round" fill="none"/><circle cx="45.6" cy="14.6" r="2.3" fill="#9dff3a"/></svg></button>
+  </aside>
+
+  <section class="heir-card" id="heirCard" aria-hidden="true"></section>
 
   <script type="module" src="app.js"></script>
 </body>
