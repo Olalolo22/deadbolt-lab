@@ -227,6 +227,19 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 4. A full run (create → missed pulse → grace → release → claim) SHALL be completable in under 120 seconds using demo controls.
 5. Demo mode SHALL be clearly labelled as simulated anywhere the clock is shown.
 
+### Requirement 7b: The Raven guide
+
+**User Story:** As a first-time visitor or a judge, I want a guide that always tells me the one next thing to do, so that I can see the whole idea in under two minutes without reading instructions.
+
+#### Acceptance Criteria
+
+1. Every page SHALL show the Raven: one short line of text for the current route and state, and one action button.
+2. The line and action SHALL be a pure function of the route, the create step, the vault state, the chain status and a few flags (signed in, heir accepted, heir signed in, revealed, checked in here).
+3. Tapping only the Raven's button SHALL take a visitor from the landing page through create, invite, missed check-ins, grace, release and the reveal, then "Start over".
+4. The Raven SHALL be hushable to a small bird button and SHALL never block the page's main action.
+5. Voice: wry with the owner and in the demo; plain and kind wherever the heir is reading about a loss. When the chain is unreachable it SHALL say so plainly and offer to restore it (demo).
+6. It SHALL respect reduced motion and be fully usable by keyboard and screen reader.
+
 ### Requirement 8: Visual system and accessibility
 
 **User Story:** As any user, I want an interface that is unmistakably Frankenstein-themed yet easy to use on a phone.

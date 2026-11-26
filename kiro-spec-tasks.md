@@ -63,6 +63,12 @@
   - Playwright E2E at 390px and 1366px: full run in under 120 s of simulated time
   - _Requirements: 5.1–5.7, 5b.1–5b.6, 7.4_
 
+- [ ] 9a. Build the Raven guide
+  - Port `guideFor()` as a pure function returning `{ text, label, action }`, with unit tests per route/state pair
+  - Hush/bird toggle; keyboard and screen-reader friendly; reduced motion
+  - Playwright: the full guided tour from the landing page to the reveal using only the Raven's button
+  - _Requirements: 7b.1–7b.6_
+
 - [ ] 10. Implement the on-chain clock (live mode)
   - [ ] 10.1 Sui Move module: vault object with `last_pulse_ms`, `pulse()` and `seal_approve` gated on `clock::timestamp_ms() ≥ last_pulse + interval + grace` (`Clock` 0x6, milliseconds throughout)
   - [ ] 10.2 `OnChainClock` adapter: `lockShard` (Seal-encrypt C), `recordPulse`, `status` and `releasedShard`
