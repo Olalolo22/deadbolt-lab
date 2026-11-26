@@ -540,7 +540,24 @@ $$("[data-jump]").forEach((b) =>
     if (b.dataset.jump === "release") jumpTo(releaseAt(vault) + 1000);
   })
 );
-$("#resetVault").addEventListener("click", () => {
+$("#resetVault").addEventListener("click", async () => {
+  if (!vault) return;
+  const err = $("#dsErr");
+  err.textContent = "";
+  const btn = $("#resetVault");
+  btn.disabled = true; btn.textContent = "Checking…";
+  try {
+    await proveOwner("ds");
+  } catch (e) {
+    err.textContent = e.message;
+    return;
+  } finally {
+    btn.disabled = false; btn.textContent = "Yes, destroy it";
+  }
+  wipeVault("Vault destroyed. Every card and backup for it is now useless. Not even a toe was kept.");
+});
+
+function wipeVault(msg) {
   if (!vault) return;
   vault = null; forged = null; prevState = null; lastVitalsState = null;
   owner = null; renderSignin();
@@ -565,8 +582,10 @@ $("#resetVault").addEventListener("click", () => {
   mgKey = "";
   chain.cut = false; $("#chainToggle").textContent = "Cut the chain"; $("#chainToggle").classList.remove("on");
   clearTimeout(chain.timer); setChain("ok");
-  toast("Vault destroyed. Every card and backup for it is now useless. Not even a toe was kept.");
-});
+  ["mg", "ds"].forEach((p) => { $(`#${p}Sealed`).value = ""; $(`#${p}Pw`).value = ""; });
+  $("#dsErr").textContent = "";
+  toast(msg);
+}
 
 /* =========================================================
    CLAIM (heir)
@@ -620,12 +639,12 @@ $("#claimBtn").addEventListener("click", async () => {
   }
 });
 
-async function reanimate(pieces, how, verb) {
+async function reanimate(pieces, how, verb, locked = { iv: vault.iv, ct: vault.ct }) {
   if (pieces[0].x === pieces[1].x) throw new Error("Two copies of the same shard is still one shard. You need a different piece.");
   const key = await crypto.subtle.importKey("raw", combine(pieces), "AES-GCM", false, ["decrypt"]);
   let pt;
   try {
-    pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromHex(vault.iv) }, key, fromHex(vault.ct));
+    pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromHex(locked.iv) }, key, fromHex(locked.ct));
   } catch {
     throw new Error("The parts don't fit. That shard belongs to another creature.");
   }
@@ -883,6 +902,7 @@ function openReseal() {
 $("#heirStatus").addEventListener("click", (e) => { if (e.target.closest("[data-open-reseal]")) openReseal(); });
 $("#mgReseal").addEventListener("toggle", () => {
   if (!$("#mgReseal").open || !vault) return;
+  renderProofs();
   $("#mgHeirName").value = vault.heirName;
   $("#mgHeirEmail").value = vault.heirEmail;
   $("#mgSecret").value = "";
@@ -902,7 +922,15 @@ $("#mgResealGo").addEventListener("click", async () => {
   if (!/^\S+@\S+\.\S+$/.test(email)) { err.textContent = "That email looks cursed. Check the spelling."; return; }
   if (!secret.trim()) { err.textContent = "Paste what you sealed before, or write it fresh. DeadBolt never kept a copy, so it can't fill this in for you."; return; }
   const btn = $("#mgResealGo");
-  btn.disabled = true; btn.textContent = "Sealing…";
+  btn.disabled = true; btn.textContent = "Checking your backup…";
+  try {
+    await proveOwner("mg");
+  } catch (e) {
+    err.textContent = e.message;
+    btn.disabled = false; btn.textContent = "Seal it again";
+    return;
+  }
+  btn.textContent = "Sealing…";
   try {
     const keyBytes = crypto.getRandomValues(new Uint8Array(32));
     const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -926,24 +954,16 @@ $("#mgResealGo").addEventListener("click", async () => {
       ? `Vault sealed again for ${name}: new key, new pieces. The old card, the old backup and the old invitation open nothing now.`
       : `Heir changed from ${oldHeir} to ${name}. Vault sealed again: ${oldHeir}'s card, the old backup and the old invitation open nothing now.`);
     if (!sameHeir) log(`${name} needs to accept their new card before the chain can release anything to them.`, "r");
+    $("#mgSealed").value = ""; $("#mgPw").value = "";
 
     // old keepsakes are useless: send the owner straight to the new ones
     lastSealed = null; heirSignedIn = false; revealed = false;
     $("#reveal").hidden = true; $("#shardInput").value = "";
     $("#mgSecret").value = "";
     $("#mgReseal").open = false;
-    $("#stitchStage").classList.add("live");
-    $('.shard[data-s="a"] code').textContent = a;
-    $('.shard[data-s="b"] code').textContent = b;
-    $('.shard[data-s="c"] code').textContent = c;
-    $("#keyPreview").textContent = "destroyed · only shards remain";
-    $("#stitchCaption").innerHTML = `Sealed again for ${escapeHtml(name)}. <b>Print the new card and save a new backup.</b> The old ones open nothing now.`;
-    $("#keepsakes").hidden = false;
-    forged = true;
     mgKey = ""; heirStatusKey = ""; outboxKey = "";
     save();
-    location.hash = "#/table";
-    showStep(4);
+    openKeepsakes(`Sealed again for ${escapeHtml(name)}. <b>Print the new card and save a new backup.</b> The old ones open nothing now.`);
     toast("Sealed again. Now print the new card and save a new backup.");
   } catch (e) {
     console.error(e);
@@ -953,7 +973,39 @@ $("#mgResealGo").addEventListener("click", async () => {
   }
 });
 
+async function proveOwner(p) {
+  const sealed = $(`#${p}Sealed`).value;
+  if (!sealed.trim()) throw new Error("Paste your sealed backup first. Your Google sign-in alone can't do this, on purpose.");
+  if (!$(`#${p}Pw`).value) throw new Error("Type your backup password too.");
+  const opened = await openBackup(sealed, $(`#${p}Pw`).value);
+  if (encodeShare(opened.share) !== vault.shards.b) throw new Error("That backup belongs to another vault, or to an older version of this one.");
+}
+function renderProofs() {
+  $$(".proof-paste").forEach((b) => (b.hidden = !lastSealed));
+  $$(".proof-none").forEach((b) => (b.hidden = !!lastSealed));
+}
+$$(".proof-paste").forEach((b) => b.addEventListener("click", () => {
+  if (lastSealed) $(`#${b.dataset.proof}Sealed`).value = lastSealed;
+}));
+$$("[data-keepsakes]").forEach((b) => b.addEventListener("click", () =>
+  openKeepsakes("Seal your backup here, then go back to Vitals. <b>Keep the file and the password in different places.</b>")));
+
+function openKeepsakes(caption) {
+  if (!vault) return;
+  $("#stitchStage").classList.add("live");
+  $('.shard[data-s="a"] code').textContent = vault.shards.a;
+  $('.shard[data-s="b"] code').textContent = vault.shards.b;
+  $('.shard[data-s="c"] code').textContent = vault.shards.c;
+  $("#keyPreview").textContent = "destroyed · only shards remain";
+  $("#stitchCaption").innerHTML = caption;
+  $("#keepsakes").hidden = false;
+  forged = true;
+  location.hash = "#/table";
+  showStep(4);
+}
+
 $("#destroyAsk").addEventListener("click", () => {
+  renderProofs();
   if (!chainReady("the delete")) return;
   $("#destroyConfirm").hidden = false;
   $("#destroyAsk").hidden = true;
@@ -1094,13 +1146,13 @@ function guideFor() {
   }
   if (r === "/claim") {
     if (!vault) return ["Nothing buried here yet. Make a vault first, then come back to dig.", "To the operating table", go("#/table")];
-    if (revealed) return [st === "RELEASED" ? "It lives again. No lawyer, no company, no early release. That's DeadBolt." : "Opened by break-glass: the card, the sealed backup and the password, no chain needed. That's the fallback working.", "Start over", () => { $("#resetVault").click(); location.hash = "#/"; }];
+    if (revealed) return [st === "RELEASED" ? "It lives again. No lawyer, no company, no early release. That's DeadBolt." : "Opened by break-glass: the card, the sealed backup and the password, no chain needed. That's the fallback working.", "Start over", () => { wipeVault("Fresh table. Run it again whenever you like."); location.hash = "#/"; }];
     if (st !== "RELEASED") return ["Too soon. The owner may still be breathing. Shard C stays locked until the grace period runs out.", "Check the vitals", go("#/vitals")];
     if (!heirSignedIn && vault.heir.accepted) return [`First, prove you're ${vault.heirName}. The last piece only goes to the account that accepted.`, `Sign in as ${vault.heirName.split(" ")[0]} (demo)`, () => $("#heirSignIn").click()];
     if (!heirSignedIn) return [`${vault.heirName} never accepted the invitation, so the normal route is shut. The break-glass route below still works with the sealed backup.`, "Check the vitals", go("#/vitals")];
     if (!revealed) return ["Paste your shard A, then reanimate. I kept a copy of the demo heir's. Ravens hoard things.", "Paste and reanimate",
       () => { $("#pasteDemoShard").click(); $("#claimBtn").click(); }];
-    return ["It lives again. No lawyer, no company, no early release. That's DeadBolt.", "Start over", () => { $("#resetVault").click(); location.hash = "#/"; }];
+    return ["It lives again. No lawyer, no company, no early release. That's DeadBolt.", "Start over", () => { wipeVault("Fresh table. Run it again whenever you like."); location.hash = "#/"; }];
   }
   if (!vault) return ["Your keys die with you. Unless… Want to watch the whole experiment in 60 seconds? I'll guide you.", "Run the experiment", go("#/table")];
   if (st === "RELEASED") return ["Your creature has risen. Go and see what it left behind.", "Go to the will", go("#/claim")];
@@ -1169,23 +1221,29 @@ async function passwordKey(password, salt) {
   return crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt, iterations: KDF_ITERATIONS },
     base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
+// DBB2: the sealed payload is shard B plus a copy of the locked vault (it's useless without two shards).
+// So break-glass needs only the heir's card, this file and the password: no chain, no DeadBolt.
 async function sealBackup(shard, password) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const key = await passwordKey(password, salt);
-  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(shard)));
-  return `DBB1-${toHex(salt)}-${toHex(iv)}-${toHex(ct)}`;
+  const payload = JSON.stringify({ b: shard, iv: vault.iv, ct: vault.ct });
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(payload)));
+  return `DBB2-${toHex(salt)}-${toHex(iv)}-${toHex(ct)}`;
 }
 async function openBackup(sealed, password) {
-  const m = sealed.trim().match(/^DBB1-([0-9a-f]{32})-([0-9a-f]{24})-([0-9a-f]+)$/i);
-  if (!m) throw new Error("That's not a sealed DeadBolt backup. They start with DBB1-.");
+  const m = sealed.trim().match(/^DBB([12])-([0-9a-f]{32})-([0-9a-f]{24})-([0-9a-f]+)$/i);
+  if (!m) throw new Error("That's not a sealed DeadBolt backup. They start with DBB2- (or DBB1- for older ones).");
+  let text;
   try {
-    const key = await passwordKey(password, fromHex(m[1]));
-    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromHex(m[2]) }, key, fromHex(m[3]));
-    return decodeShare(new TextDecoder().decode(pt));
+    const key = await passwordKey(password, fromHex(m[2]));
+    text = new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromHex(m[3]) }, key, fromHex(m[4])));
   } catch {
     throw new Error("Wrong password, or that backup belongs to another vault.");
   }
+  if (m[1] === "1") return { share: decodeShare(text), iv: null, ct: null };
+  const o = JSON.parse(text);
+  return { share: decodeShare(o.b), iv: o.iv, ct: o.ct };
 }
 function downloadText(name, text) {
   const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
@@ -1214,7 +1272,7 @@ $("#sealGo").addEventListener("click", async () => {
       "DeadBolt sealed backup (shard B)",
       "",
       "This piece is locked with a password only the owner knows. On its own it opens nothing.",
-      "Break-glass: with the heir's card AND the password, it opens the vault even if the chain or DeadBolt is gone.",
+      "It also carries a locked copy of the vault. So with the heir's card AND the password, it opens the vault even if the chain and DeadBolt are both gone.",
       "Keep this file and the password in different places. Leave them only with someone you'd trust with the vault itself.",
       "",
       sealed,
@@ -1245,9 +1303,11 @@ $("#bgGo").addEventListener("click", async () => {
     if (await isRetired("cards", $("#shardInput").value)) throw new Error(RETIRED_CARD);
     const a = decodeShare($("#shardInput").value);
     btn.disabled = true; btn.textContent = "Checking the password…";
-    const b = await openBackup($("#bgSealed").value, $("#bgPw").value);
-    if (await isRetired("backups", encodeShare(b))) throw new Error("That backup was retired when the owner sealed the vault again. It belongs to the old version and opens nothing now.");
-    await reanimate([a, b], "the heir's card and the sealed backup, without the chain (break-glass)", "opened by break-glass");
+    const opened = await openBackup($("#bgSealed").value, $("#bgPw").value);
+    if (await isRetired("backups", encodeShare(opened.share))) throw new Error("That backup was retired when the owner sealed the vault again. It belongs to the old version and opens nothing now.");
+    // a DBB2 backup carries its own locked copy of the vault: nothing from the chain or DeadBolt is used
+    const locked = opened.ct ? { iv: opened.iv, ct: opened.ct } : { iv: vault.iv, ct: vault.ct };
+    await reanimate([a, opened.share], "the heir's card and the sealed backup, without the chain (break-glass)", "opened by break-glass", locked);
     $("#bgPw").value = "";
   } catch (e) {
     err.textContent = e.message;

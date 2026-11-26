@@ -118,6 +118,7 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 4. The claim page SHALL offer a break-glass route: heir card + sealed backup + password rebuilds the key in the browser without the chain.
 5. IF the password is wrong or the backup belongs to another vault THEN the system SHALL show "Wrong password, or that backup belongs to another vault." and reveal nothing.
 6. The UI SHALL state the trade-off: whoever holds the backup and its password, together with the heir, could open the vault early.
+7. The sealed backup SHALL also carry a copy of the encrypted vault (IV + ciphertext), so the break-glass route needs nothing from the chain, the key servers or DeadBolt.
 
 ### Requirement 5b: The heir's invitation and a release bound to their account
 
@@ -147,6 +148,7 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 7. AFTER a reseal, the owner SHALL be taken to print the new card and save a new backup.
 8. WHEN the owner destroys the vault THEN the system SHALL ask for an inline confirmation ("This can't be undone"), then delete the vault and its locked piece so nothing can ever be released.
 9. WHILE the vault is released, only destroy SHALL be available.
+10. Changing the heir or contents, and destroying, SHALL require proof of the sealed backup (backup + password) in addition to the owner's signature, so that a stolen sign-in can only delay a release. Changing the interval and checking in SHALL need only the signature.
 
 ### Requirement 6: Chain-clock and heartbeat adapters
 
@@ -199,6 +201,19 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 4. Messages SHALL NEVER contain the secret, any shard or the invitation code.
 5. Owner messages MAY use the Raven's voice; the heir's notice SHALL NOT.
 6. The prototype SHALL show every sent message in an Outbox on Vitals, timestamped by vault day.
+
+### Requirement 7a: Honest claims
+
+**User Story:** As a judge or a careful user, I want every promise in the UI to be backed by a mechanism and every limit to be stated, so that I can trust what DeadBolt says about itself.
+
+#### Acceptance Criteria
+
+1. Every trust claim in the UI SHALL map to a row in DESIGN.md's "Claims we make" table, with its mechanism and its honest limit.
+2. The landing page SHALL show "What else you're trusting, and the worst it could do" for: the rules, the key servers, the owner's Google account, the sealed backup, DeadBolt itself, and the chain going quiet.
+3. The UI SHALL NOT say "nobody can fake a check-in". It SHALL say DeadBolt can't sign for the owner, and that a stolen sign-in could only delay a release.
+4. The UI SHALL NOT say "no server can open it early" without the limit: a colluding majority of the key-server committee plus the heir's card could.
+5. Every screen that shows a simulated part (sign-in, chain clock, key servers, messages) SHALL label it, and SHALL say what is real (encryption, the 2-of-3 split, the sealed backup).
+6. The Move package SHALL be made immutable before launch, and the UI claim "nobody can change the rules" SHALL only ship once it is.
 
 ### Requirement 7: Demo mode
 

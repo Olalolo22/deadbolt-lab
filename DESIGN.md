@@ -105,10 +105,25 @@ named." What it means, what to keep, nothing to do but "Accept with Google". The
 the final piece is ever released to. Vitals shows "invited" or "accepted as …". On the claim page, the heir signs in
 before the released piece appears. If they never accepted, the page says so and points to the break-glass route.
 
+## Claims we make, and what makes each one true
+
+| Claim in the UI | What makes it true | The honest limit we also show |
+| --- | --- | --- |
+| "No company decides you're gone" | Release = your missed check-ins + the chain's clock, checked by public code | — |
+| "Nobody can change the rules, not even us" | The Move package is made immutable (`make_immutable` destroys the UpgradeCap) | No bug fixes after launch either |
+| "No admin key can open it early" | Shard C is released by a Seal key-server committee only when `seal_approve` passes | A colluding majority of the committee *plus* the heir's card could |
+| "Signed by you. We can't sign for you." | zkLogin: Google sign-in + salt; DeadBolt only sponsors the fee | A stolen Google account (+ salt) could fake check-ins: it can only delay |
+| "Changing your heir or deleting needs your backup" | `reseal` / `destroy` also need proof of shard B | Lose the backup and you can only check in and change the interval |
+| "Break-glass works even if we vanish" | The sealed backup carries shard B *and* a locked copy of the vault | Backup + password + heir's card can open it early |
+| "Nothing on a guess" | The UI shows only the last chain answer; writes are refused while unreachable | — |
+
+Simulated parts are always labelled: sign-in, the chain clock, the key servers and the messages.
+
 ## Sealed backup and break-glass
 
 Shard B never leaves the browser unsealed. The owner picks a password (10+ characters, typed twice, no reset) and
-downloads a sealed backup. On the claim page, a quiet "break-glass route" lets the heir combine their card with the
+downloads a sealed backup. The backup also carries a locked copy of the vault, so break-glass needs nothing from the
+chain or DeadBolt. Changing the heir or deleting the vault asks for this backup and its password ("Prove it's you"). On the claim page, a quiet "break-glass route" lets the heir combine their card with the
 sealed backup and its password when the chain or DeadBolt has gone silent. The UI always states the trade-off: whoever
 holds the backup and its password, together with the heir, could open the vault early.
 
