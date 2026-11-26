@@ -59,7 +59,7 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 7. WHEN the split completes THEN the system SHALL play the split animation (key core charges, three bolts draw, shards A, B and C appear) and trigger the lightning flash once.
 8. WHEN the split completes THEN the system SHALL discard the plaintext and the unsplit key from memory and clear the secret input.
 9. The system SHALL NOT send the plaintext secret or the unsplit key over the network at any point.
-10. WHEN the vault is created THEN the system SHALL offer shard A to the owner as a printable or downloadable heir card, and shard B as an owner backup.
+10. WHEN the vault is created THEN the system SHALL offer shard A to the owner as a printable heir card, and shard B ONLY as a password-sealed backup (Requirement 5a). Shard B SHALL NEVER leave the browser unsealed.
 11. WHEN the vault is created THEN the system SHALL hand shard C to the chain-clock adapter (Requirement 6) and SHALL NOT send shards A or B to the DeadBolt backend.
 
 ### Requirement 3: Owner dashboard ("Vitals")
@@ -105,6 +105,19 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 5. IF the pasted text is not a valid shard THEN the system SHALL show "That doesn't look like a DeadBolt shard."
 6. IF both shards have the same index THEN the system SHALL show "You need two different shards."
 7. IF decryption fails THEN the system SHALL show "The parts don't fit. That shard belongs to another vault." and reveal nothing.
+
+### Requirement 5a: Sealed backup and the break-glass route
+
+**User Story:** As an owner, I want a spare piece that's useless to anyone without my password, so that I have a fallback if the technology fails without giving my heir a way in early.
+
+#### Acceptance Criteria
+
+1. Shard B SHALL be sealed in the browser with an owner-chosen password: Argon2id (m=19 MiB, t=2, p=1) in production, or PBKDF2-HMAC-SHA256 with at least 600,000 iterations; a random 16-byte salt; AES-256-GCM.
+2. The password SHALL be at least 10 characters, typed twice, and SHALL NEVER be sent anywhere or stored.
+3. The UI SHALL say plainly that there is no password reset.
+4. The claim page SHALL offer a break-glass route: heir card + sealed backup + password rebuilds the key in the browser without the chain.
+5. IF the password is wrong or the backup belongs to another vault THEN the system SHALL show "Wrong password, or that backup belongs to another vault." and reveal nothing.
+6. The UI SHALL state the trade-off: whoever holds the backup and its password, together with the heir, could open the vault early.
 
 ### Requirement 6: Chain-clock and heartbeat adapters
 

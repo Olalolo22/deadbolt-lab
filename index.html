@@ -595,6 +595,20 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
   .hc-foot { font-size: 9pt; color: #444; }
 }
 
+/* ---------- sealed backup + break-glass ---------- */
+.seal-form { margin-top: 16px; padding: 18px; border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--bg-2); }
+.seal-title { margin: 0 0 6px; font: 400 1.4rem var(--f-display); }
+.seal-form > .muted { margin: 0 0 14px; }
+.seal-form input[type="password"], .breakglass input[type="password"] { font-family: var(--f-mono); }
+details.why, details.breakglass { margin-top: 14px; }
+details.why summary, details.breakglass summary { cursor: pointer; color: var(--volt); font-size: .76rem; list-style: none; }
+details.why summary::-webkit-details-marker, details.breakglass summary::-webkit-details-marker { display: none; }
+details.why summary::before, details.breakglass summary::before { content: "+ "; }
+details[open].why summary::before, details[open].breakglass summary::before { content: "− "; }
+details.why p { color: var(--bone-2); font-size: .9rem; margin: 10px 0 0; }
+details.breakglass { margin-top: 22px; padding-top: 16px; border-top: 1px dashed var(--line-2); }
+details.breakglass > .muted { margin: 10px 0 14px; }
+
 /* ---------- sign-in (create, step 3) ---------- */
 .signin { margin-top: 18px; padding: 18px; border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--bg-2); }
 .signin-title { margin: 0 0 6px; font: 400 1.4rem var(--f-display); }
@@ -764,7 +778,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
       <div class="trust">
         <div class="trust-row trust-head mono"><span>Shard</span><span>Held by</span><span>What it can do alone</span></div>
         <div class="trust-row"><span class="shard-chip a">A</span><span>Your heir: a sealed card you give them</span><span class="muted">Nothing. It sleeps until shard C wakes.</span></div>
-        <div class="trust-row"><span class="shard-chip b">B</span><span>You, in your own backup</span><span class="muted">Nothing. It lets you recover your vault while you're alive.</span></div>
+        <div class="trust-row"><span class="shard-chip b">B</span><span>You, sealed with a password only you know</span><span class="muted">Nothing on its own, and it's locked with your password, so even your heir can't use it. It doubles as a break-glass route if the chain ever fails.</span></div>
         <div class="trust-row"><span class="shard-chip c">C</span><span>Locked to the chain clock</span><span class="muted">Nothing until the deadline. Then it's public, by design.</span></div>
         <p class="trust-foot mono">Invariant: before release, no single party holds 2 shards. DeadBolt's servers hold 0.</p>
       </div>
@@ -859,9 +873,22 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
             </div>
           </div>
           <p class="muted small" id="stitchCaption">The key will be split into 3 shards. Any 2 rebuild it.</p>
+          <div class="seal-form" id="sealForm" hidden>
+            <p class="seal-title">Seal your backup</p>
+            <p class="muted small">Pick a password only you know. Without it this file is useless, even to your heir. There's no reset, so write the password down somewhere away from the file.</p>
+            <label class="field"><span>Password (10 or more characters)</span><input type="password" id="sealPw" autocomplete="new-password" /></label>
+            <label class="field"><span>Type it again</span><input type="password" id="sealPw2" autocomplete="new-password" /></label>
+            <button type="button" class="btn btn-volt btn-sm" id="sealGo">Seal and download</button>
+            <p class="claim-error mono" id="sealErr" role="alert"></p>
+            <details class="why">
+              <summary class="mono">What is this backup for?</summary>
+              <p>Two things. While you're alive, it's your spare piece. And it's a <b>break-glass route</b>: keep the file in your safe and the password in your will, or with your lawyer. If the chain or DeadBolt ever goes silent, your heir's card plus this backup plus the password still opens the vault.</p>
+              <p>Only leave it with someone you'd trust with the vault itself. Together with your heir, they could open it early.</p>
+            </details>
+          </div>
           <div class="keepsakes" id="keepsakes" hidden>
             <button type="button" class="btn btn-ghost btn-sm" id="printCard">Print the heir's card</button>
-            <button type="button" class="btn btn-ghost btn-sm" id="downloadBackup">Download my backup (shard B)</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="downloadBackup">Seal my backup (shard B)</button>
           </div>
         </fieldset>
 
@@ -926,7 +953,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
             <h3 class="card-title mono">Shard map</h3>
             <ul class="shard-map">
               <li><span class="shard-chip a">A</span> <span id="mapHeir">Heir</span><em class="mono">dormant</em></li>
-              <li><span class="shard-chip b">B</span> You<em class="mono">safe</em></li>
+              <li><span class="shard-chip b">B</span> You<em class="mono">sealed</em></li>
               <li><span class="shard-chip c">C</span> Chain clock<em class="mono" id="mapC">locked</em></li>
             </ul>
           </div>
@@ -1000,6 +1027,15 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
           </div>
           <button type="button" class="btn btn-volt wide" id="claimBtn">Reanimate</button>
           <p class="claim-error mono" id="claimError" role="alert"></p>
+          <details class="breakglass" id="breakglass">
+            <summary class="mono">Chain gone silent? Use the break-glass route</summary>
+            <p class="muted small">For when the chain or DeadBolt has stopped responding. You need the owner's sealed backup and its password (usually left with their lawyer or in their will) plus your card above.</p>
+            <label class="field"><span><span class="shard-chip b">B</span> Sealed backup</span><textarea id="bgSealed" rows="3" class="mono" placeholder="DBB1-…"></textarea></label>
+            <button type="button" class="link-btn mono" id="bgPasteDemo" hidden>Paste the backup sealed in this demo</button>
+            <label class="field"><span>Backup password</span><input type="password" id="bgPw" autocomplete="off" /></label>
+            <button type="button" class="btn btn-ghost wide" id="bgGo">Break the glass</button>
+            <p class="claim-error mono" id="bgErr" role="alert"></p>
+          </details>
         </div>
       </div>
       </div>

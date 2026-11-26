@@ -115,6 +115,7 @@ interface Vault {
 | Component | Trust | Label shown |
 | --- | --- | --- |
 | Shamir split, AES-GCM | None: runs in the owner's browser | "Encrypted on your device" |
+| Owner backup (shard B) | Sealed with the owner's password. Alone: nothing. With the heir's card *and* the password: opens the vault without the chain, by design (break-glass) | "Sealed with a password only you know. Even your heir can't use it alone." |
 | Shard C release | Chain clock + Seal key-server threshold | "Released by the chain clock" |
 | Check-ins | Signed by the owner's zkLogin address; DeadBolt only sponsors the fee (Enoki) | "Signed by you. DeadBolt pays the fee but can't sign for you." |
 | Sign-in | Google plus Enoki's managed salt. Together they could sign as the owner, which could only *delay* a release, never open a vault | "Sign-in by Google. The worst it could do is keep your vault shut longer." |
@@ -136,6 +137,12 @@ public fun pulse(v: &mut Vault, clock: &Clock, ctx: &TxContext) {
 
 The check-in page builds this transaction, the owner signs it through Enoki's zkLogin wallet, and DeadBolt's server
 asks Enoki to sponsor and submit it. The fallback path signs and pays from the same address with the owner's own gas.
+
+### Sealed backup format
+
+`DBB1-<salt 16 bytes hex>-<iv 12 bytes hex>-<AES-256-GCM ciphertext hex>`. The plaintext is the `DB1-2-…` shard
+string. The key comes from the password via Argon2id (production) or PBKDF2-HMAC-SHA256 with 600,000 iterations
+(prototype). The version prefix lets the format change later without breaking old backups.
 
 ## Error Handling
 
