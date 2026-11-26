@@ -58,8 +58,10 @@
 - [ ] 9. Build the claim page and the end-to-end demo
   - Tombstone (crack when released), shard A input, released shard C box, Reanimate → reveal
   - Error copy for invalid, duplicate and wrong-vault shards
+  - Heir invitation page `/invite` (code from the card), "Accept with Google", accepted/invited status on Vitals
+  - Claim requires the heir's sign-in; `accept_heir` and the heir check in `seal_approve`; the never-accepted path points to break-glass
   - Playwright E2E at 390px and 1366px: full run in under 120 s of simulated time
-  - _Requirements: 5.1–5.7, 7.4_
+  - _Requirements: 5.1–5.7, 5b.1–5b.6, 7.4_
 
 - [ ] 10. Implement the on-chain clock (live mode)
   - [ ] 10.1 Sui Move module: vault object with `last_pulse_ms`, `pulse()` and `seal_approve` gated on `clock::timestamp_ms() ≥ last_pulse + interval + grace` (`Clock` 0x6, milliseconds throughout)

@@ -68,6 +68,13 @@ transform, filter, clip-path or SVG stroke. All of it switches off under `prefer
 
 The ECG is the only thing that moves continuously. No parallax, cursor effects or looping decoration.
 
+## The heir's side
+
+The heir's card carries an invitation link (DeadBolt never sees it). Opening it shows a calm paper letter: "You've been
+named." What it means, what to keep, nothing to do but "Accept with Google". The account they accept with is the only one
+the final piece is ever released to. Vitals shows "invited" or "accepted as …". On the claim page, the heir signs in
+before the released piece appears. If they never accepted, the page says so and points to the break-glass route.
+
 ## Sealed backup and break-glass
 
 Shard B never leaves the browser unsealed. The owner picks a password (10+ characters, typed twice, no reset) and

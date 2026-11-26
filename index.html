@@ -595,6 +595,20 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
   .hc-foot { font-size: 9pt; color: #444; }
 }
 
+/* ---------- heir invitation + heir-bound claim ---------- */
+.invite { max-width: 620px; margin: 0 auto; padding: clamp(36px, 8vw, 80px) 0 40px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+.invite-letter { text-align: left; width: 100%; margin: 6px 0 24px; }
+.inv-head { font-size: clamp(2.2rem, 8vw, 3.4rem); margin: 0 0 16px; color: var(--ink); }
+.inv-body { font: 400 1.08rem/1.6 var(--f-display); color: var(--ink); }
+.inv-body p { margin: 0 0 12px; }
+.inv-body ul { margin: 0 0 12px; padding-left: 20px; }
+.inv-body li { margin-bottom: 6px; }
+.inv-done { margin: 14px 0 0; padding: 14px 16px; border: 1px solid var(--volt); border-radius: var(--r-sm); background: rgba(157,255,58,.05); color: var(--bone); animation: rise .4s both; }
+.heir-status { margin: 14px 0 6px; color: var(--bone-2); }
+.heir-status.warn { color: var(--stitch); }
+.shard-map em.ok { color: var(--volt); }
+.heir-signin { margin: 4px 0 16px; }
+
 /* ---------- sealed backup + break-glass ---------- */
 .seal-form { margin-top: 16px; padding: 18px; border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--bg-2); }
 .seal-title { margin: 0 0 6px; font: 400 1.4rem var(--f-display); }
@@ -767,7 +781,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
         <li class="lc lc-alive"><span class="lc-n mono">01</span><h4>Alive</h4><p>You tap the pulse link and the timer resets. Nothing moves.</p></li>
         <li class="lc lc-flat"><span class="lc-n mono">02</span><h4>Flatline</h4><p>You miss a check-in. DeadBolt reminds you, up to three times. Nothing else happens.</p></li>
         <li class="lc lc-grace"><span class="lc-n mono">03</span><h4>Grace</h4><p>Three missed in a row opens 14 days of alarms on every channel. One tap undoes everything.</p></li>
-        <li class="lc lc-rise"><span class="lc-n mono">04</span><h4>Resurrection</h4><p>The clock opens shard C. Your heir adds shard A and the secret lives again.</p></li>
+        <li class="lc lc-rise"><span class="lc-n mono">04</span><h4>Resurrection</h4><p>The clock releases shard C to your heir's account, and only theirs. They add their card and the secret lives again.</p></li>
       </ol>
       </div>
 
@@ -779,7 +793,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
         <div class="trust-row trust-head mono"><span>Shard</span><span>Held by</span><span>What it can do alone</span></div>
         <div class="trust-row"><span class="shard-chip a">A</span><span>Your heir: a sealed card you give them</span><span class="muted">Nothing. It sleeps until shard C wakes.</span></div>
         <div class="trust-row"><span class="shard-chip b">B</span><span>You, sealed with a password only you know</span><span class="muted">Nothing on its own, and it's locked with your password, so even your heir can't use it. It doubles as a break-glass route if the chain ever fails.</span></div>
-        <div class="trust-row"><span class="shard-chip c">C</span><span>Locked to the chain clock</span><span class="muted">Nothing until the deadline. Then it's public, by design.</span></div>
+        <div class="trust-row"><span class="shard-chip c">C</span><span>Locked to the chain clock</span><span class="muted">Nothing until the deadline. Then it's released only to the account your heir accepted with.</span></div>
         <p class="trust-foot mono">Invariant: before release, no single party holds 2 shards. DeadBolt's servers hold 0.</p>
       </div>
 
@@ -827,7 +841,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
         <fieldset data-panel="2" hidden>
           <legend class="display">Who receives it?</legend>
           <label class="field"><span>Heir's name</span><input id="heirName" placeholder="Aisha Bello" required /></label>
-          <label class="field"><span>Heir's email</span><input id="heirEmail" type="email" placeholder="aisha@example.com" /></label>
+          <label class="field"><span>Heir's email</span><input id="heirEmail" type="email" placeholder="aisha@example.com" required /><small class="muted">They accept with the Google account for this email. The last piece is only ever released to that account.</small></label>
           <p class="note"><span class="shard-chip a">A</span> Your heir gets shard A as a printable card. On its own, it reveals nothing.</p>
         </fieldset>
 
@@ -952,10 +966,12 @@ details.breakglass > .muted { margin: 10px 0 14px; }
           <div class="card">
             <h3 class="card-title mono">Shard map</h3>
             <ul class="shard-map">
-              <li><span class="shard-chip a">A</span> <span id="mapHeir">Heir</span><em class="mono">dormant</em></li>
+              <li><span class="shard-chip a">A</span> <span id="mapHeir">Heir</span><em class="mono" id="mapA">invited</em></li>
               <li><span class="shard-chip b">B</span> You<em class="mono">sealed</em></li>
               <li><span class="shard-chip c">C</span> Chain clock<em class="mono" id="mapC">locked</em></li>
             </ul>
+            <p class="heir-status small" id="heirStatus"></p>
+            <a class="link-btn mono" id="inviteLink" href="#/invite">See the heir's invitation →</a>
           </div>
 
           <div class="card">
@@ -979,6 +995,20 @@ details.breakglass > .muted { margin: 10px 0 14px; }
     </section>
 
     <!-- ============ CLAIM (HEIR) ============ -->
+    <!-- ============ HEIR INVITATION (what the link on the heir's card opens) ============ -->
+    <section class="route" data-route="/invite" hidden>
+      <div class="invite">
+        <p class="kicker mono" id="invKicker">A message for you</p>
+        <div class="letter invite-letter">
+          <h1 class="display inv-head" id="invHead">You've been named.</h1>
+          <div class="inv-body" id="invBody"></div>
+        </div>
+        <button type="button" class="btn btn-light" id="invAccept">Accept with Google</button>
+        <p class="inv-done" id="invDone" role="status" hidden></p>
+        <p class="demo-note mono">Demo: this is the page the link on the heir's card opens. Sign-in is simulated.</p>
+      </div>
+    </section>
+
     <!-- ============ CHECK-IN PAGE (what the reminder email opens) ============ -->
     <section class="route" data-route="/pulse" hidden>
       <div class="pp" id="pp">
@@ -1024,6 +1054,10 @@ details.breakglass > .muted { margin: 10px 0 14px; }
           <div class="field">
             <span><span class="shard-chip c">C</span> Released shard</span>
             <div class="released mono" id="releasedBox">Locked by the chain clock. Not yet released.</div>
+          </div>
+          <div class="heir-signin" id="heirSigninBox" hidden>
+            <button type="button" class="btn btn-light wide" id="heirSignIn">Sign in as the heir (Google)</button>
+            <p class="demo-note mono">Demo: sign-in is simulated. The chain only hands shard C to the account that accepted the invitation.</p>
           </div>
           <button type="button" class="btn btn-volt wide" id="claimBtn">Reanimate</button>
           <p class="claim-error mono" id="claimError" role="alert"></p>

@@ -14,6 +14,8 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
 /* ---------------- state ---------------- */
 let vault = load();
+if (vault && !vault.heir) vault.heir = { accepted: false, account: null, address: null };
+if (vault && !vault.inviteToken) vault.inviteToken = toHex(crypto.getRandomValues(new Uint8Array(16)));
 let demo = true;          // demo: 1 day per real second
 let speed = 1;            // days per real second when demo is on
 let lastFrame = performance.now();
@@ -66,6 +68,8 @@ function route() {
   if (target === "/vitals") renderVitals(true);
   if (target === "/claim") renderClaim();
   if (target === "/pulse") { pulsedHere = false; renderPulsePage(true); }
+  if (target === "/invite") renderInvite(true);
+  if (target === "/vitals") renderHeirStatus();
 }
 window.addEventListener("hashchange", route);
 
@@ -268,7 +272,8 @@ function validate(n) {
   if (n === 2 && !$("#heirName").value.trim()) return "Name your heir. \"Whoever finds my laptop\" is not an inheritance plan.";
   if (n === 2) {
     const e = $("#heirEmail").value.trim();
-    if (e && !/^\S+@\S+\.\S+$/.test(e)) return "That email looks cursed. Check the spelling.";
+    if (!e) return "We need your heir's email. It's where their invitation goes, and the only account the last piece is released to.";
+    if (!/^\S+@\S+\.\S+$/.test(e)) return "That email looks cursed. Check the spelling.";
   }
   if (n === 3 && !owner) return "Sign in first, so your check-ins are signed by you and nobody else.";
   return null;
@@ -321,12 +326,15 @@ async function throwSwitch() {
       shards: { a, b, c },
       born, simNow: born, lastPulse: born,
       owner,
+      heir: { accepted: false, account: null, address: null },
+      inviteToken: toHex(crypto.getRandomValues(new Uint8Array(16))),
       log: [],
     };
     prevState = "ALIVE";
     log(`Creature assembled. Heir: ${vault.heirName}. Pulse every ${interval} days via ${channel}.`, "v");
     log("Key split 2-of-3: A → heir, B → owner, C → chain clock.");
     log(`Only ${owner.account} can check in. DeadBolt covers the fees.`);
+    log(`Invitation link printed on ${vault.heirName}'s card. DeadBolt never sees it.`);
     save();
     $("#secret").value = "";
     $("#keepsakes").hidden = false;
@@ -371,6 +379,7 @@ function renderVitals(force = false) {
   $("#hudDue").textContent = hudValue;
   $("#hudSince").textContent = fmtDur(now - vault.lastPulse).replace(" ago", "");
   $("#hudChannel").textContent = vault.channel;
+  renderHeirStatus();
 
   // lifecycle track: 0 = last pulse, 1 = release deadline
   const span = releaseAt(vault) - vault.lastPulse;
@@ -403,6 +412,7 @@ function renderVitals(force = false) {
       RELEASED: "Too late: shard C is public. Your heir can claim now.",
     }[st];
     $("#mapHeir").textContent = vault.heirName;
+    renderHeirStatus();
     const mc = $("#mapC");
     mc.textContent = st === "RELEASED" ? "released" : "locked";
     mc.classList.toggle("hot", st === "RELEASED");
@@ -448,6 +458,7 @@ $("#resetVault").addEventListener("click", () => {
   if (!vault) return;
   vault = null; forged = null; prevState = null; lastVitalsState = null;
   owner = null; renderSignin();
+  heirSignedIn = false;
   save();
   $("#stitchStage").classList.remove("live");
   $$(".shard code").forEach((c) => (c.textContent = "—"));
@@ -473,12 +484,15 @@ function renderClaim() {
   tomb.classList.toggle("open", released);
   $("#tombMeta").textContent = !vault ? "no vault on this device" : released ? "shard C · released" : `shard C · locked · ${st.toLowerCase()}`;
   const box = $("#releasedBox");
-  box.classList.toggle("hot", released);
+  box.classList.toggle("hot", released && heirSignedIn);
   box.textContent = !vault
     ? "Nothing buried here yet. Assemble a vault on the operating table first."
-    : released
+    : !released
+    ? `Locked by the chain clock. Opens in ${fmtDur(releaseAt(vault) - vault.simNow)} if no check-in arrives.`
+    : heirSignedIn
     ? vault.shards.c
-    : `Locked by the chain clock. Opens in ${fmtDur(releaseAt(vault) - vault.simNow)} if no pulse arrives.`;
+    : `Released to ${vault.heir && vault.heir.account ? vault.heir.account : `${vault.heirName}'s account`} only. Sign in as the heir to receive it.`;
+  $("#heirSigninBox").hidden = !(vault && released && !heirSignedIn);
   $("#claimError").textContent = "";
 }
 
@@ -493,6 +507,7 @@ $("#claimBtn").addEventListener("click", async () => {
   try {
     if (!vault) throw new Error("No vault on this device. Nothing to dig up.");
     if (stateOf(vault) !== "RELEASED") throw new Error("Shard C is still locked. The owner may still be alive (awkward).");
+    if (!heirSignedIn) throw new Error("Sign in as the heir first. The last piece only goes to their account.");
     const a = decodeShare($("#shardInput").value);
     const c = decodeShare(vault.shards.c);
     await reanimate([a, c], "shards A + C", "opened");
@@ -521,6 +536,92 @@ async function reanimate(pieces, how, verb) {
   $("#reveal").scrollIntoView({ behavior: "smooth", block: "center" });
   log(`${vault.heirName} rebuilt the key from ${how}.`, "e");
   revealed = true;
+}
+
+/* =========================================================
+   THE HEIR: invitation, acceptance, and a release bound to their account
+   ========================================================= */
+let heirSignedIn = false;
+let invKey = "";
+const hashParams = () => new URLSearchParams(location.hash.split("?")[1] || "");
+const inviteHash = () => (vault ? `#/invite?t=${vault.inviteToken}` : "#/invite");
+
+function renderInvite(force = false) {
+  const token = hashParams().get("t");
+  const valid = !!vault && token === vault.inviteToken;
+  const accepted = !!vault && vault.heir.accepted;
+  const key = [!!vault, valid, accepted].join("|");
+  if (key === invKey && !force) return;
+  invKey = key;
+  const body = $("#invBody");
+  if (!vault) {
+    $("#invKicker").textContent = "No invitation";
+    $("#invHead").textContent = "Nothing here yet.";
+    body.innerHTML = "<p>There's no vault on this device, so there's no invitation to accept.</p>";
+  } else if (!valid) {
+    $("#invKicker").textContent = "Invitation link incomplete";
+    $("#invHead").textContent = "Use the link on your card.";
+    body.innerHTML = "<p>This link is missing its code. Open the exact link printed on the card you were given.</p>";
+  } else {
+    $("#invKicker").textContent = `A message for ${vault.heirName}`;
+    $("#invHead").textContent = "You've been named.";
+    body.innerHTML = `
+      <p>${escapeHtml(vault.owner ? vault.owner.account : "Someone who cares about you")} has used DeadBolt to leave you something private. Nothing happens now, and there's nothing for you to do except one tap below.</p>
+      <p>What this means:</p>
+      <ul>
+        <li>They check in every ${vault.interval} days. As long as they do, nothing is ever released.</li>
+        <li>If they go silent for a long time (3 missed check-ins, then 14 days of alarms), you'll be told, and you'll be able to open what they left.</li>
+        <li>You'll need two things then: the card they gave you, and the Google account you accept with now.</li>
+      </ul>
+      <p>Keep the card somewhere safe. On its own it opens nothing.</p>`;
+  }
+  $("#invAccept").hidden = !valid || accepted;
+  const done = $("#invDone");
+  done.hidden = !(valid && accepted);
+  if (valid && accepted) done.textContent = `Accepted as ${vault.heir.account}. You can close this page. We hope you never need it.`;
+}
+$("#invAccept").addEventListener("click", () => {
+  if (!vault) return;
+  vault.heir = { accepted: true, account: vault.heirEmail, address: "0x" + toHex(crypto.getRandomValues(new Uint8Array(32))) };
+  log(`${vault.heirName} accepted as ${vault.heir.account}. The last piece can only be released to that account.`, "v");
+  save();
+  toast("Invitation accepted (simulated sign-in).");
+  renderInvite(true);
+});
+(function invLoop() {
+  if (!$('[data-route="/invite"]').hidden) renderInvite();
+  requestAnimationFrame(invLoop);
+})();
+
+$("#heirSignIn").addEventListener("click", () => {
+  const err = $("#claimError");
+  if (!vault) return;
+  if (!vault.heir.accepted) {
+    err.textContent = `${vault.heirName} never accepted the invitation, so the chain can't release the last piece to their account. Use the break-glass route below.`;
+    return;
+  }
+  heirSignedIn = true;
+  log(`${vault.heirName} signed in as ${vault.heir.account}. Shard C released to that account.`, "e");
+  renderClaim();
+  toast(`Signed in as ${vault.heir.account} (simulated).`);
+});
+
+let heirStatusKey = "";
+function renderHeirStatus() {
+  if (!vault) return;
+  const accepted = vault.heir.accepted;
+  const k = `${vault.inviteToken}|${accepted}`;
+  if (k === heirStatusKey) return;
+  heirStatusKey = k;
+  const mapA = $("#mapA");
+  mapA.textContent = accepted ? "accepted" : "invited";
+  mapA.classList.toggle("ok", accepted);
+  const s = $("#heirStatus");
+  s.textContent = accepted
+    ? `${vault.heirName} accepted as ${vault.heir.account}. Not them? Change your heir.`
+    : `${vault.heirName} hasn't accepted yet. Until they do, the chain can't release anything to them.`;
+  s.classList.toggle("warn", !accepted);
+  $("#inviteLink").href = inviteHash();
 }
 
 /* =========================================================
@@ -628,6 +729,7 @@ function guideFor() {
   }
   if (r === "/vitals") {
     if (!vault) return ["An empty table. Deeply unsettling. Let's build you a creature.", "To the operating table", go("#/table")];
+    if (st === "ALIVE" && !vault.heir.accepted) return [`Steady heartbeat. ${vault.heirName}'s card has an invitation link on it. Let's see what she sees when she opens it.`, "Open the invitation", () => { location.hash = inviteHash(); }];
     if (st === "ALIVE") return ["Steady heartbeat. Now imagine you stop answering your check-ins. I'll skip ahead and show you what happens.", "Skip to a missed check-in",
       () => { vault.simNow = Math.max(vault.simNow, dueAt(vault) + 1000); }];
     if (st === "FLATLINE") return ["You missed a check-in. I'm pecking at your inbox. Nothing happens until you've missed three in a row, and one tap resets it all.", "Miss all three",
@@ -635,6 +737,11 @@ function guideFor() {
     if (st === "GRACE") return ["Three missed in a row. Grace period: 14 days of alarms on every channel. One tap undoes everything. Or…", "Let it lapse",
       () => { vault.simNow = Math.max(vault.simNow, releaseAt(vault) + 1000); }];
     return ["The chain clock has spoken. Shard C is free. Your heir may now read the will.", "Go to the will", go("#/claim")];
+  }
+  if (r === "/invite") {
+    if (!vault) return ["No invitation here. Make a vault first.", "To the operating table", go("#/table")];
+    if (!vault.heir.accepted) return [`This is what ${vault.heirName} sees on day one. Calm on purpose. I save the drama for later.`, `Accept as ${vault.heirName.split(" ")[0]} (demo)`, () => $("#invAccept").click()];
+    return ["Accepted. The last piece can now only ever go to that account.", "Back to the owner's vitals", go("#/vitals")];
   }
   if (r === "/pulse") {
     if (!vault) return ["This is the page your reminder email opens. Make a vault first.", "To the operating table", go("#/table")];
@@ -646,6 +753,8 @@ function guideFor() {
     if (!vault) return ["Nothing buried here yet. Make a vault first, then come back to dig.", "To the operating table", go("#/table")];
     if (revealed) return [st === "RELEASED" ? "It lives again. No lawyer, no company, no early release. That's DeadBolt." : "Opened by break-glass: the card, the sealed backup and the password, no chain needed. That's the fallback working.", "Start over", () => { $("#resetVault").click(); location.hash = "#/"; }];
     if (st !== "RELEASED") return ["Too soon. The owner may still be breathing. Shard C stays locked until the grace period runs out.", "Check the vitals", go("#/vitals")];
+    if (!heirSignedIn && vault.heir.accepted) return [`First, prove you're ${vault.heirName}. The last piece only goes to the account that accepted.`, `Sign in as ${vault.heirName.split(" ")[0]} (demo)`, () => $("#heirSignIn").click()];
+    if (!heirSignedIn) return [`${vault.heirName} never accepted the invitation, so the normal route is shut. The break-glass route below still works with the sealed backup.`, "Check the vitals", go("#/vitals")];
     if (!revealed) return ["Paste your shard A, then reanimate. I kept a copy of the demo heir's. Ravens hoard things.", "Paste and reanimate",
       () => { $("#pasteDemoShard").click(); $("#claimBtn").click(); }];
     return ["It lives again. No lawyer, no company, no early release. That's DeadBolt.", "Start over", () => { $("#resetVault").click(); location.hash = "#/"; }];
@@ -656,7 +765,7 @@ function guideFor() {
 }
 
 function renderGuide(force = false) {
-  const key = [curRoute(), step, !!forged, !!owner, pulsedHere, vault ? stateOf(vault) : "none", revealed, guideHushed].join("|");
+  const key = [curRoute(), step, !!forged, !!owner, pulsedHere, vault ? stateOf(vault) : "none", vault ? vault.heir.accepted : "-", heirSignedIn, revealed, guideHushed].join("|");
   if (key === guideKey && !force) return;
   guideKey = key;
   const [text, label, run] = guideFor();
@@ -686,16 +795,22 @@ $$("[data-tour]").forEach((el) => el.addEventListener("click", () => setHushed(f
 $("#printCard").addEventListener("click", () => {
   if (!vault) return;
   const claimUrl = `${location.origin}${location.pathname}#/claim`;
+  const inviteUrl = `${location.origin}${location.pathname}#/invite?t=${vault.inviteToken}`;
   $("#heirCard").innerHTML = `<div class="hc">
     <p class="hc-top">HERE RESTS A KEY</p>
     <h1>For ${escapeHtml(vault.heirName)}</h1>
     <p>Someone who cares about you used DeadBolt to leave you something private. This card is your half of the key.
     On its own it opens nothing, so it's safe to keep in a drawer.</p>
+    <h2>Do this now</h2>
+    <ol>
+      <li>Open <b>${escapeHtml(inviteUrl)}</b></li>
+      <li>Press <b>Accept with Google</b>. That account is the only one the last piece will ever be released to.</li>
+    </ol>
     <h2>When the time comes</h2>
     <ol>
       <li>DeadBolt will let you know when the vault opens.</li>
       <li>Go to <b>${escapeHtml(claimUrl)}</b></li>
-      <li>Type or paste the code below, then press <b>Reanimate</b>.</li>
+      <li>Sign in with the same Google account, type or paste the code below, then press <b>Reanimate</b>.</li>
     </ol>
     <p class="hc-code">${escapeHtml(vault.shards.a)}</p>
     <p class="hc-foot">Keep this card private. Don't photograph it or post it online.</p>
