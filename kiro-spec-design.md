@@ -45,7 +45,10 @@ styles/
 1. The browser generates a 32-byte key and a 12-byte IV and encrypts the secret (AES-256-GCM).
 2. `shamir.split(key, 3, 2)` produces A, B and C; the key and plaintext references are dropped.
 3. A → heir card (download/print), B → owner backup (download), C → `ChainClock.lockShard(c, releaseAt)`.
-4. Ciphertext + IV + metadata → the vault store (demo) or the backend (live). No shard is sent to the backend.
+4. Ciphertext + IV → the vault object on Sui (secrets are small) **and** inside the sealed backup. Never only on
+   DeadBolt's backend. Walrus is optional for large attachments only: storage is bought for at most ~2 years at a time
+   and must be renewed, so a funded contract renews it and the ciphertext is never kept on Walrus alone. No shard is
+   ever sent to the backend.
 
 ### Data flow: claim
 
@@ -121,6 +124,18 @@ interface Vault {
 | Check-ins | Signed by the owner's zkLogin address; DeadBolt only sponsors the fee (Enoki) | "Signed by you. DeadBolt pays the fee but can't sign for you." |
 | Sign-in | Google plus Enoki's managed salt. Together they could sign as the owner, which could only *delay* a release, never open a vault | "Sign-in by Google. The worst it could do is keep your vault shut longer." |
 
+**Who could open a vault early, all of them stated in the UI:**
+
+- A colluding majority (threshold) of the Seal key-server committee **plus** the heir's card. The real build targets
+  Seal's decentralized (committee) key server, run by independent operators with threshold MPC; it is live on Sui
+  testnet today, with independent key servers in a t-of-n setup as the fallback.
+- Whoever holds the sealed backup **and** its password, **plus** the heir's card (break-glass, by design).
+- Nobody else: not DeadBolt, not Google, not Mysten. Google + Enoki's salt could sign as the owner, which only lets
+  them check in or change the interval (delay); reseal and destroy also need proof of shard B.
+
+The Move package is made immutable after audit (`sui::package::make_immutable` destroys the UpgradeCap), so the
+release rule can never be changed, at the cost of no later bug fixes.
+
 **Known risk, stated honestly:** if DeadBolt stops sponsoring fees, check-ins still work from the owner's own wallet, and
 reminders plus 14 days of alarms on every channel give the owner time to notice. DeadBolt can never sign a check-in.
 
@@ -191,9 +206,14 @@ public fun set_interval(v: &mut Vault, interval_ms: u64, clock: &Clock, ctx: &Tx
 }
 
 /// Change the heir or the contents: the browser made a new key, new pieces and a new invite code.
-public fun reseal(v: &mut Vault, sealed_c: vector<u8>, invite_hash: vector<u8>, keep_heir: bool,
-                  clock: &Clock, ctx: &TxContext) {
+// Vault gains: manage_hash = sha256(sha256(shard B)), set at create and at every reseal.
+// reseal and destroy need proof = sha256(shard B), which only someone who can open the sealed backup can compute.
+// So a stolen Google sign-in alone can check in or change the interval (delay), never reseal or destroy.
+public fun reseal(v: &mut Vault, proof: vector<u8>, new_manage_hash: vector<u8>, sealed_c: vector<u8>,
+                  invite_hash: vector<u8>, keep_heir: bool, clock: &Clock, ctx: &TxContext) {
     assert!(ctx.sender() == v.owner, ENotOwner);
+    assert!(hash::sha2_256(proof) == v.manage_hash, EBadProof);
+    v.manage_hash = new_manage_hash;
     assert!(clock.timestamp_ms() < release_at(v), EReleased);
     v.version = v.version + 1;           // seal_approve refuses ids from older versions
     v.sealed_c = sealed_c;
@@ -202,8 +222,9 @@ public fun reseal(v: &mut Vault, sealed_c: vector<u8>, invite_hash: vector<u8>, 
     v.last_pulse_ms = clock.timestamp_ms();
 }
 
-public fun destroy(v: Vault, ctx: &TxContext) {
+public fun destroy(v: Vault, proof: vector<u8>, ctx: &TxContext) {
     assert!(ctx.sender() == v.owner, ENotOwner);
+    assert!(hash::sha2_256(proof) == v.manage_hash, EBadProof);
     let Vault { id, .. } = v;
     object::delete(id);                  // nothing left for seal_approve to approve
 }
@@ -217,8 +238,9 @@ and destroy.
 
 ### Sealed backup format
 
-`DBB1-<salt 16 bytes hex>-<iv 12 bytes hex>-<AES-256-GCM ciphertext hex>`. The plaintext is the `DB1-2-…` shard
-string. The key comes from the password via Argon2id (production) or PBKDF2-HMAC-SHA256 with 600,000 iterations
+`DBB2-<salt 16 bytes hex>-<iv 12 bytes hex>-<AES-256-GCM ciphertext hex>`. The plaintext is JSON:
+`{ b: "DB1-2-…", iv, ct }`, i.e. shard B plus a copy of the encrypted vault, so break-glass needs nothing from the
+chain or DeadBolt. `DBB1-` (shard B only) is still read for older backups. The key comes from the password via Argon2id (production) or PBKDF2-HMAC-SHA256 with 600,000 iterations
 (prototype). The version prefix lets the format change later without breaking old backups.
 
 ## Error Handling

@@ -102,6 +102,10 @@
 
 - [ ] 12. Add honest trust labels and the final pass
   - Trust labels on Create, Vitals and Claim exactly as in the design's trust-model table
+  - "What else you're trusting, and the worst it could do" on the landing page; demo labels on every simulated part
+  - DBB2 backups (shard B + locked vault copy); "Prove it's you" on reseal and destroy; `manage_hash` in Move
+  - `make_immutable` in the deploy script, after audit; the "nobody can change the rules" copy ships only after it
+  - _Requirements: 5a.7, 5c.10, 7a.1–7a.6_
   - Accessibility pass (tap targets, reduced motion, colour plus text for every state); screenshot every route for Devpost
   - Motion pass: awakening, sewing, developing and the crack, verified under reduced motion
   - _Requirements: 6.4, 8.2–8.6_

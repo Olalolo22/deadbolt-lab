@@ -614,6 +614,22 @@ body[data-chain="down"] #stateBadge::after { content: " · last seen"; opacity: 
 
 .released.note { word-break: normal; overflow-wrap: break-word; }
 
+/* ---------- honesty: what else you're trusting, proof of backup ---------- */
+.trust-also { margin: -64px 0 96px; }
+.trust-also-title { font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; font-weight: 500; }
+.trust-list { margin: 0; display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.trust-list > div { background: var(--bg); padding: 14px 18px; display: grid; grid-template-columns: 170px 1fr; gap: 6px 18px; }
+.trust-list dt { color: var(--bone); font-weight: 600; font-size: .92rem; }
+.trust-list dd { margin: 0; color: var(--bone-2); font-size: .92rem; line-height: 1.55; }
+@media (max-width: 640px) { .trust-list > div { grid-template-columns: 1fr; } }
+.trust-sim { margin: 12px 0 0; font-size: .72rem; color: var(--ether); line-height: 1.6; }
+.vitals-note { margin-top: 18px; }
+.proof { margin: 14px 0; padding: 14px; border: 1px dashed var(--line-2); border-radius: var(--r-sm); }
+.proof-title { margin: 0 0 6px; color: var(--bone); font-weight: 600; }
+.proof .field { margin-bottom: 12px; }
+.proof .link-btn { display: block; margin: -6px 0 12px; text-align: left; }
+.proof-lost { margin: 0; }
+
 /* ---------- manage vault ---------- */
 .manage .mg-block { border-top: 1px solid var(--line-2); padding-top: 16px; margin-top: 16px; }
 .manage .mg-label { margin: 0 0 10px; font-size: .86rem; color: var(--bone-2); }
@@ -744,7 +760,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
           DeadBolt stitches three technologies that were never meant to touch: <strong>1979 cryptography</strong>,
           a <strong>Web2 heartbeat</strong> and an <strong>on-chain clock</strong>. Together they guard what only you know
           (keys, passwords, the letter you never sent) while you live, and hand it to your family when you don't.
-          No lawyer reads it, and no server decides you're gone.
+          No lawyer reads it, and no company decides you're gone: only your own missed check-ins and the chain's clock do.
         </p>
         <div class="hero-ctas">
           <a class="btn btn-volt" href="#/table" data-tour>Run the 60-second experiment</a>
@@ -819,7 +835,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
           </svg>
           <h3>The Heart</h3>
           <p class="organ-sub mono">Email &amp; Telegram heartbeat</p>
-          <p>Every 30 days, a one-tap "I'm alive" link lands in your inbox or Telegram. No wallet or gas needed, so your mum could do it. Miss three in a row, and the alarms start.</p>
+          <p>Every 7, 30 or 90 days, a one-tap "I'm alive" link lands in your inbox, Telegram or texts. It's signed by your own Google account and we pay the fee, so no wallet is needed and your mum could do it. Miss three in a row, and the alarms start.</p>
         </article>
         <div class="seam" aria-hidden="true"></div>
         <article class="organ">
@@ -830,7 +846,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
           </svg>
           <h3>The Hand</h3>
           <p class="organ-sub mono">Time-locked release on a chain clock</p>
-          <p>The third shard sits behind a chain clock and opens only after the heartbeat <em>and</em> the grace period have both run out. No server and no admin key can open it early, not even ours.</p>
+          <p>The third shard opens only after the heartbeat <em>and</em> the grace period have both run out. That rule is public code nobody can change, not even us: we destroyed the key that could upgrade it. A committee of independent key servers hands the shard over only when the code says yes. Opening it early would take most of that committee cheating together, and they'd still need your heir's card.</p>
         </article>
       </div>
 
@@ -857,6 +873,18 @@ details.breakglass > .muted { margin: 10px 0 14px; }
         <div class="trust-row"><span class="shard-chip b">B</span><span>You, sealed with a password only you know</span><span class="muted">Nothing on its own, and it's locked with your password, so even your heir can't use it. It doubles as a break-glass route if the chain ever fails.</span></div>
         <div class="trust-row"><span class="shard-chip c">C</span><span>Locked to the chain clock</span><span class="muted">Nothing until the deadline. Then it's released only to the account your heir accepted with.</span></div>
         <p class="trust-foot mono">Invariant: before release, no single party holds 2 shards. DeadBolt's servers hold 0.</p>
+      </div>
+      <div class="trust-also">
+        <h3 class="trust-also-title mono">What else you're trusting, and the worst it could do</h3>
+        <dl class="trust-list">
+          <div><dt>The rules</dt><dd>Public code on Sui. We destroyed the key that could change it, so nobody can rewrite it later, us included.</dd></div>
+          <div><dt>The key servers</dt><dd>A committee of independent operators that only follow those rules. To open your vault early, most of them would have to cheat together <em>and</em> get your heir's card.</dd></div>
+          <div><dt>Your Google account</dt><dd>It signs your check-ins. If someone stole it, the worst they could do is keep your vault shut longer. Changing your heir or deleting the vault also needs your sealed backup.</dd></div>
+          <div><dt>Your sealed backup</dt><dd>Whoever has it <em>and</em> its password, together with your heir's card, can open the vault early. That's the price of a fallback, so keep them apart.</dd></div>
+          <div><dt>DeadBolt</dt><dd>Pays the fees and sends the reminders. If we vanish, you can still check in from your own wallet, and your heir's card plus your backup still open the vault.</dd></div>
+          <div><dt>The chain going quiet</dt><dd>Nothing is released, claimed or checked in on a guess. It waits.</dd></div>
+        </dl>
+        <p class="trust-sim mono">In this demo, sign-in, the chain clock, the key servers and the messages are simulated. The encryption, the 2-of-3 split and the password-sealed backup are real, and run in your browser.</p>
       </div>
 
       <section class="scene etched scene-end">
@@ -924,7 +952,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
           <p class="note worst" id="worstCase"></p>
           <div class="signin" id="signinBox">
             <p class="signin-title">Who's checking in?</p>
-            <p class="muted small">Every check-in is signed by your own account, so nobody can fake one, not even us. We cover the tiny fee, so you never need a crypto wallet.</p>
+            <p class="muted small">Every check-in is signed by your own Google account. Our servers can't sign for you; we just pay the tiny fee, so you never need a crypto wallet. If someone stole your Google account, the worst they could do is keep your vault shut longer.</p>
             <button type="button" class="btn btn-light" id="googleBtn">Continue with Google</button>
             <p class="signed-as mono" id="signedAs" hidden></p>
             <p class="demo-note mono">Demo: sign-in is simulated here. No real account is used.</p>
@@ -1063,11 +1091,20 @@ details.breakglass > .muted { margin: 10px 0 14px; }
 
             <details class="mg-block mg-reseal" id="mgReseal">
               <summary>Change your heir or what's inside</summary>
-              <p class="small">DeadBolt never kept a copy of your vault, so it can't edit it for you. Instead you seal it again: a new key and three new pieces. <b>Your old heir's card, your old backup and the old invitation stop working the moment you do.</b></p>
+              <p class="small">DeadBolt never kept a copy of your vault, so it can't edit it for you. Instead you seal it again: a new key and three new pieces. <b>Your old heir's card, your old backup and the old invitation stop working the moment you do.</b> You'll need your sealed backup to do it.</p>
               <label class="field"><span>Heir's name</span><input id="mgHeirName" autocomplete="off" /></label>
               <label class="field"><span>Heir's email</span><input id="mgHeirEmail" type="email" autocomplete="off" /><small class="muted">Same email: they stay accepted. New email: the new heir has to accept their new card.</small></label>
               <label class="field"><span>What's inside</span><textarea id="mgSecret" rows="6" placeholder="Paste what you sealed before, or write it fresh."></textarea></label>
               <button type="button" class="link-btn mono" id="mgSample">Use the sample letter (demo)</button>
+<div class="proof" id="mgProof">
+                <p class="proof-title">Prove it's you</p>
+                <p class="muted small">Paste your sealed backup and type its password. Your Google sign-in alone can't change your heir or delete the vault, so a stolen account could only ever keep it shut longer.</p>
+                <label class="field"><span><span class="shard-chip b">B</span> Sealed backup</span><textarea id="mgSealed" rows="2" class="mono" placeholder="DBB2-…"></textarea></label>
+                <button type="button" class="link-btn mono proof-paste" data-proof="mg">Paste my demo backup</button>
+                <button type="button" class="link-btn mono proof-none" data-keepsakes>Demo: you haven't sealed a backup yet. Seal one first →</button>
+                <label class="field"><span>Backup password</span><input type="password" id="mgPw" autocomplete="off" /></label>
+                <p class="muted small proof-lost">Lost your backup? You can still check in and change how often. Changing your heir or deleting needs it.</p>
+              </div>
               <button type="button" class="btn btn-volt wide" id="mgResealGo">Seal it again</button>
               <p class="claim-error mono" id="mgErr" role="alert"></p>
             </details>
@@ -1076,6 +1113,16 @@ details.breakglass > .muted { margin: 10px 0 14px; }
               <button type="button" class="link-btn mono danger" id="destroyAsk">Destroy this vault</button>
               <div class="destroy-confirm" id="destroyConfirm" hidden>
                 <p><b>This can't be undone.</b> The locked copy and the chain's piece are deleted, so every card and backup for this vault will never open anything again.</p>
+                <div class="proof" id="dsProof">
+                <p class="proof-title">Prove it's you</p>
+                <p class="muted small">Paste your sealed backup and type its password. Your Google sign-in alone can't change your heir or delete the vault, so a stolen account could only ever keep it shut longer.</p>
+                <label class="field"><span><span class="shard-chip b">B</span> Sealed backup</span><textarea id="dsSealed" rows="2" class="mono" placeholder="DBB2-…"></textarea></label>
+                <button type="button" class="link-btn mono proof-paste" data-proof="ds">Paste my demo backup</button>
+                <button type="button" class="link-btn mono proof-none" data-keepsakes>Demo: you haven't sealed a backup yet. Seal one first →</button>
+                <label class="field"><span>Backup password</span><input type="password" id="dsPw" autocomplete="off" /></label>
+                <p class="muted small proof-lost">Lost your backup? You can still check in and change how often. Changing your heir or deleting needs it.</p>
+              </div>
+                <p class="claim-error mono" id="dsErr" role="alert"></p>
                 <div class="row-btns">
                   <button type="button" class="btn btn-danger" id="resetVault">Yes, destroy it</button>
                   <button type="button" class="btn btn-ghost" id="destroyKeep">Keep it</button>
@@ -1095,6 +1142,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
             <ol class="outbox" id="outbox"></ol>
           </div>
         </div>
+        <p class="demo-note mono vitals-note">Demo: sign-in, the chain clock, the key servers and the messages are simulated in your browser. The encryption, the 2-of-3 split and the sealed backup are real.</p>
       </div>
     </section>
 
@@ -1192,7 +1240,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
   <p class="plates-credit mono">Plates, all public domain: Theodor von Holst, frontispiece to <i>Frankenstein</i> (1831) · Giovanni Aldini, <i>Essai sur le galvanisme</i> (1804), Wellcome Collection, CC BY 4.0 · <i>A Galvanised Corpse</i> (1836) · Gustave Doré, <i>The Raven</i> (1884). Via <a href="https://commons.wikimedia.org" rel="noopener">Wikimedia Commons</a>.</p>
   <footer class="foot mono">
     <span>DeadBolt · zero-custody digital succession</span>
-    <span>Design prototype · client-side demo only, not production crypto custody</span>
+    <span>Design prototype · real encryption in your browser, simulated chain · don't store real secrets here yet</span>
   </footer>
 
   <div class="toast mono" id="toast" role="status" aria-live="polite"></div>
