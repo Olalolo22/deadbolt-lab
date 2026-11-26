@@ -64,6 +64,12 @@
   - Live mode reads state from the chain only; a read failure never shows RELEASED
   - _Requirements: 6.1, 6.3_
 
+- [ ] 10a. Signed check-ins
+  - Google sign-in through Enoki (zkLogin) in the create flow; store the owner's address on the vault
+  - Move `pulse()` that asserts `sender == owner`; Enoki-sponsored transactions; own-wallet fallback
+  - `/pulse` check-in page with state-aware copy; API keys only from environment variables
+  - _Requirements: 6a.1–6a.7_
+
 - [ ] 11. Implement pulse channels
   - Backend issues one-time pulse links per channel; tapping one relays `pulse()`; always offer a direct wallet pulse
   - Alarms on every channel when FLATLINE starts and daily during GRACE

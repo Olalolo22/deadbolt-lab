@@ -90,7 +90,8 @@ A = heir (dormant card) · B = owner backup · C = time-locked to the chain cloc
 1. **Anatomy** (`/`): hero "It's alive. / *Until it isn't.*", hero ECG, stat strip, three organs, lifecycle, custody table, CTA.
 2. **Operating Table** (`/table`): stepper Secret → Heir → Pulse → Stitch. The final button reads "⚡ Throw the switch".
 3. **Vitals** (`/vitals`): monitor + HUD, a 150px circular "I'm alive" button (turns red when urgent), lifecycle track, shard map, time warp (demo only), lab notebook log.
-4. **Claim** (`/claim`): tombstone + shard A input + released shard C + "Reanimate" → reveal panel.
+4. **Check-in page** (`/pulse`): what the reminder email opens. Black, big type, one giant "I'm alive" button, the signer shown underneath, a quiet own-wallet fallback. Copy changes with the state (early, missed n of 3, last warning, too late).
+5. **Claim** (`/claim`): tombstone + shard A input + released shard C + "Reanimate" → reveal panel.
 
 ## Demo mode (required for judging)
 
