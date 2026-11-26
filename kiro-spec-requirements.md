@@ -132,6 +132,22 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 5. The release policy SHALL require BOTH the chain clock past the release time AND the request coming from the heir's address (Seal `seal_approve`).
 6. IF the heir never accepted THEN the claim page SHALL say the normal route is unavailable and point to the break-glass route.
 
+### Requirement 5c: Managing a vault
+
+**User Story:** As an owner, I want to change how often I check in, change who my vault is for, or delete it, so that my plan can change when my life does.
+
+#### Acceptance Criteria
+
+1. Vitals SHALL show a "Manage vault" card with exactly three actions: change the check-in interval, change the heir or contents, and destroy.
+2. Every change SHALL be signed by the owner's address and SHALL also count as a check-in; the UI SHALL say so.
+3. WHEN the owner changes the interval THEN the new interval SHALL apply from that moment.
+4. WHEN the owner changes the heir or the contents THEN the system SHALL seal the vault again in the browser (new key, new pieces, new invitation code), because DeadBolt holds no copy. The owner SHALL re-enter the contents.
+5. AFTER a reseal, the old card, the old sealed backup and the old invitation SHALL open nothing, and each SHALL say so in plain words if used. The chain SHALL refuse to release any piece of an older version.
+6. IF the heir's email is unchanged THEN their acceptance SHALL carry over; otherwise the new heir SHALL accept their new card.
+7. AFTER a reseal, the owner SHALL be taken to print the new card and save a new backup.
+8. WHEN the owner destroys the vault THEN the system SHALL ask for an inline confirmation ("This can't be undone"), then delete the vault and its locked piece so nothing can ever be released.
+9. WHILE the vault is released, only destroy SHALL be available.
+
 ### Requirement 6: Chain-clock and heartbeat adapters
 
 **User Story:** As a judge, I want to see real integrations behind the Heart and the Hand, so that the Frankenstein stitch is genuine and not a mock.

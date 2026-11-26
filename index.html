@@ -595,6 +595,23 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
   .hc-foot { font-size: 9pt; color: #444; }
 }
 
+/* ---------- manage vault ---------- */
+.manage .mg-block { border-top: 1px solid var(--line-2); padding-top: 16px; margin-top: 16px; }
+.manage .mg-label { margin: 0 0 10px; font-size: .86rem; color: var(--bone-2); }
+.manage .choice-row { margin-bottom: 0; }
+.manage .choice input:disabled + span { opacity: .4; cursor: not-allowed; }
+.mg-reseal summary { cursor: pointer; color: var(--bone); font-weight: 500; padding: 2px 0; }
+.mg-reseal[open] summary { margin-bottom: 12px; }
+.mg-reseal p.small { color: var(--bone-2); margin: 0 0 16px; }
+.mg-reseal .link-btn { display: block; margin: -8px 0 12px; }
+.btn-danger { background: var(--stitch); color: #fff; }
+.btn-danger:hover:not(:disabled) { box-shadow: 0 0 24px rgba(229,72,77,.35); }
+.destroy-confirm { margin-top: 10px; padding: 14px; border: 1px solid var(--stitch); border-radius: var(--r-sm); background: rgba(229,72,77,.06); }
+.destroy-confirm p { margin: 0 0 12px; color: var(--bone-2); }
+.row-btns { display: flex; flex-wrap: wrap; gap: 10px; }
+.mg-destroy .link-btn.danger { margin-top: 0; }
+.heir-status .link-btn { padding: 0; font-size: inherit; }
+
 /* ---------- outbox: the messages DeadBolt sends ---------- */
 .outbox { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .outbox details { border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--bg-2); }
@@ -1005,7 +1022,42 @@ details.breakglass > .muted { margin: 10px 0 14px; }
               <button type="button" class="chip-btn" data-jump="grace">Skip to grace</button>
               <button type="button" class="chip-btn" data-jump="release">Skip to release</button>
             </div>
-            <button type="button" class="link-btn mono danger" id="resetVault">Destroy creature</button>
+          </div>
+
+          <div class="card wide manage" id="manage">
+            <h3 class="card-title mono">Manage vault</h3>
+            <p class="muted small" id="manageNote">Every change here is signed by you, so it also counts as a check-in.</p>
+
+            <div class="mg-block" id="mgIntervalBlock">
+              <p class="mg-label">Check in every</p>
+              <div class="choice-row">
+                <label class="choice"><input type="radio" name="mgInterval" value="7" /><span><b>7</b> days</span></label>
+                <label class="choice"><input type="radio" name="mgInterval" value="30" /><span><b>30</b> days</span></label>
+                <label class="choice"><input type="radio" name="mgInterval" value="90" /><span><b>90</b> days</span></label>
+              </div>
+            </div>
+
+            <details class="mg-block mg-reseal" id="mgReseal">
+              <summary>Change your heir or what's inside</summary>
+              <p class="small">DeadBolt never kept a copy of your vault, so it can't edit it for you. Instead you seal it again: a new key and three new pieces. <b>Your old heir's card, your old backup and the old invitation stop working the moment you do.</b></p>
+              <label class="field"><span>Heir's name</span><input id="mgHeirName" autocomplete="off" /></label>
+              <label class="field"><span>Heir's email</span><input id="mgHeirEmail" type="email" autocomplete="off" /><small class="muted">Same email: they stay accepted. New email: the new heir has to accept their new card.</small></label>
+              <label class="field"><span>What's inside</span><textarea id="mgSecret" rows="6" placeholder="Paste what you sealed before, or write it fresh."></textarea></label>
+              <button type="button" class="link-btn mono" id="mgSample">Use the sample letter (demo)</button>
+              <button type="button" class="btn btn-volt wide" id="mgResealGo">Seal it again</button>
+              <p class="claim-error mono" id="mgErr" role="alert"></p>
+            </details>
+
+            <div class="mg-block mg-destroy">
+              <button type="button" class="link-btn mono danger" id="destroyAsk">Destroy this vault</button>
+              <div class="destroy-confirm" id="destroyConfirm" hidden>
+                <p><b>This can't be undone.</b> The locked copy and the chain's piece are deleted, so every card and backup for this vault will never open anything again.</p>
+                <div class="row-btns">
+                  <button type="button" class="btn btn-danger" id="resetVault">Yes, destroy it</button>
+                  <button type="button" class="btn btn-ghost" id="destroyKeep">Keep it</button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="card wide">

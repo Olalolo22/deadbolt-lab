@@ -163,6 +163,42 @@ entry fun seal_approve(id: vector<u8>, v: &Vault, clock: &Clock, ctx: &TxContext
 }
 ```
 
+### Managing a vault (Sui)
+
+```move
+// Vault gains: version: u64 (starts at 1)
+public fun set_interval(v: &mut Vault, interval_ms: u64, clock: &Clock, ctx: &TxContext) {
+    assert!(ctx.sender() == v.owner, ENotOwner);
+    assert!(clock.timestamp_ms() < release_at(v), EReleased);
+    v.interval_ms = interval_ms;
+    v.last_pulse_ms = clock.timestamp_ms(); // a signed change is also a check-in
+}
+
+/// Change the heir or the contents: the browser made a new key, new pieces and a new invite code.
+public fun reseal(v: &mut Vault, sealed_c: vector<u8>, invite_hash: vector<u8>, keep_heir: bool,
+                  clock: &Clock, ctx: &TxContext) {
+    assert!(ctx.sender() == v.owner, ENotOwner);
+    assert!(clock.timestamp_ms() < release_at(v), EReleased);
+    v.version = v.version + 1;           // seal_approve refuses ids from older versions
+    v.sealed_c = sealed_c;
+    v.invite_hash = invite_hash;
+    if (!keep_heir) v.heir = option::none();
+    v.last_pulse_ms = clock.timestamp_ms();
+}
+
+public fun destroy(v: Vault, ctx: &TxContext) {
+    assert!(ctx.sender() == v.owner, ENotOwner);
+    let Vault { id, .. } = v;
+    object::delete(id);                  // nothing left for seal_approve to approve
+}
+```
+
+`seal_approve` also checks that the requested id is this vault's id plus its **current** version, so a piece sealed
+for an older version can never be released. Retired cards and backups fail to open because their key no longer
+matches the stored ciphertext; the UI also keeps short fingerprints (SHA-256) of retired pieces so it can say so
+plainly instead of showing a generic error. If the encrypted vault lives on Walrus, the old blob is deleted on reseal
+and destroy.
+
 ### Sealed backup format
 
 `DBB1-<salt 16 bytes hex>-<iv 12 bytes hex>-<AES-256-GCM ciphertext hex>`. The plaintext is the `DB1-2-…` shard

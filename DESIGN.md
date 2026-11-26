@@ -78,6 +78,16 @@ The ECG is the only thing that moves continuously. No parallax, cursor effects o
 
 Messages never contain secrets, shards or the invitation code. The prototype shows them in an Outbox on Vitals.
 
+## Managing a vault
+
+A "Manage vault" card on Vitals, with three things and nothing else:
+
+1. **Check in every 7 / 30 / 90 days.** Changes apply at once.
+2. **Change your heir or what's inside.** DeadBolt never kept a copy, so the owner seals it again (pastes or rewrites the contents). New key, new pieces. The old card, the old backup and the old invitation are retired, and they say so plainly if anyone tries them ("That card was retired…", "This invitation is no longer active."). Same heir email: they stay accepted. New email: the new heir must accept. Afterwards the owner lands on the keepsakes step to print the new card and save a new backup.
+3. **Destroy this vault**, behind an inline confirm (never a browser pop-up): "This can't be undone."
+
+Every change is signed by the owner, so it also counts as a check-in, and the copy says so. After release, only destroy remains.
+
 ## The heir's side
 
 The heir's card carries an invitation link (DeadBolt never sees it). Opening it shows a calm paper letter: "You've been
@@ -113,7 +123,7 @@ A = heir (dormant card) · B = owner backup · C = time-locked to the chain cloc
 
 1. **Anatomy** (`/`): hero "It's alive. / *Until it isn't.*", hero ECG, stat strip, three organs, lifecycle, custody table, CTA.
 2. **Operating Table** (`/table`): stepper Secret → Heir → Pulse → Stitch. The final button reads "⚡ Throw the switch".
-3. **Vitals** (`/vitals`): monitor + HUD, a 150px circular "I'm alive" button (turns red when urgent), lifecycle track, shard map, time warp (demo only), lab notebook log.
+3. **Vitals** (`/vitals`): monitor + HUD, a 150px circular "I'm alive" button (turns red when urgent), lifecycle track, shard map, time warp (demo only), manage vault, lab notebook log, outbox.
 4. **Check-in page** (`/pulse`): what the reminder email opens. Black, big type, one giant "I'm alive" button, the signer shown underneath, a quiet own-wallet fallback. Copy changes with the state (early, missed n of 3, last warning, too late).
 5. **Claim** (`/claim`): tombstone + shard A input + released shard C + "Reanimate" → reveal panel.
 
