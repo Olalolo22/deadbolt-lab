@@ -65,6 +65,7 @@ function route() {
   window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
   if (target === "/vitals") renderVitals(true);
   if (target === "/claim") renderClaim();
+  if (target === "/pulse") { pulsedHere = false; renderPulsePage(true); }
 }
 window.addEventListener("hashchange", route);
 
@@ -269,6 +270,7 @@ function validate(n) {
     const e = $("#heirEmail").value.trim();
     if (e && !/^\S+@\S+\.\S+$/.test(e)) return "That email looks cursed. Check the spelling.";
   }
+  if (n === 3 && !owner) return "Sign in first, so your check-ins are signed by you and nobody else.";
   return null;
 }
 
@@ -318,11 +320,13 @@ async function throwSwitch() {
       iv: toHex(iv), ct: toHex(ct),
       shards: { a, b, c },
       born, simNow: born, lastPulse: born,
+      owner,
       log: [],
     };
     prevState = "ALIVE";
     log(`Creature assembled. Heir: ${vault.heirName}. Pulse every ${interval} days via ${channel}.`, "v");
     log("Key split 2-of-3: A → heir, B → owner, C → chain clock.");
+    log(`Only ${owner.account} can check in. DeadBolt covers the fees.`);
     save();
     $("#secret").value = "";
     $("#keepsakes").hidden = false;
@@ -415,15 +419,21 @@ function renderLog() {
 }
 const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-$("#pulseBtn").addEventListener("click", () => {
-  if (!vault || stateOf(vault) === "RELEASED") return;
+function recordPulse(via = "sponsored") {
+  if (!vault || stateOf(vault) === "RELEASED") return false;
   const was = stateOf(vault);
   vault.lastPulse = vault.simNow;
-  if (was === "ALIVE") log("Pulse received. Timer reset.", "v");
-  prevState = was; // transition handler logs revival
+  const who = vault.owner ? vault.owner.account : "the owner";
+  log(via === "wallet"
+    ? `Check-in signed by ${who} from their own wallet. They paid the fee.`
+    : `Check-in signed by ${who}. Fee covered by DeadBolt.`, "v");
+  prevState = was; // the transition handler logs a revival
   if (navigator.vibrate) navigator.vibrate(30);
-  toast("Pulse received. Still alive. The raven looks disappointed.");
   save();
+  return true;
+}
+$("#pulseBtn").addEventListener("click", () => {
+  if (recordPulse()) toast("Check-in signed. Still alive. The raven looks disappointed.");
 });
 
 $$("[data-speed]").forEach((b) => b.addEventListener("click", () => setSpeed(Number(b.dataset.speed))));
@@ -437,6 +447,7 @@ $$("[data-jump]").forEach((b) =>
 $("#resetVault").addEventListener("click", () => {
   if (!vault) return;
   vault = null; forged = null; prevState = null; lastVitalsState = null;
+  owner = null; renderSignin();
   save();
   $("#stitchStage").classList.remove("live");
   $$(".shard code").forEach((c) => (c.textContent = "—"));
@@ -508,6 +519,85 @@ $("#claimBtn").addEventListener("click", async () => {
 });
 
 /* =========================================================
+   SIGNED CHECK-INS (simulated Google sign-in, zkLogin in the real build)
+   ========================================================= */
+let owner = null;
+let pulsedHere = false;
+let ppKey = "";
+
+function fakeAddress() {
+  return "0x" + toHex(crypto.getRandomValues(new Uint8Array(32)));
+}
+const shortAddr = (a) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+
+function renderSignin() {
+  const btn = $("#googleBtn");
+  const out = $("#signedAs");
+  if (owner) {
+    btn.textContent = "Signed in ✓";
+    btn.classList.add("done");
+    out.hidden = false;
+    out.textContent = `Signed in as ${owner.account} · your check-in address ${shortAddr(owner.address)}`;
+  } else {
+    btn.textContent = "Continue with Google";
+    btn.classList.remove("done");
+    out.hidden = true;
+  }
+}
+function signIn() {
+  if (owner) return;
+  owner = { account: "owner@example.com", address: fakeAddress() };
+  renderSignin();
+  toast("Signed in (simulated). Your check-ins will be signed by this account.");
+}
+$("#googleBtn").addEventListener("click", signIn);
+
+function renderPulsePage(force = false) {
+  const st = stateOf(vault);
+  const missed = vault ? missedCount(vault) : 0;
+  const daysLeft = vault && st === "GRACE" ? Math.ceil((releaseAt(vault) - vault.simNow) / DAY) : 0;
+  const key = [st, missed, daysLeft, pulsedHere].join("|");
+  if (key === ppKey && !force) return;
+  ppKey = key;
+  const heir = vault ? vault.heirName : "";
+  const copy = {
+    none: ["Nothing to check in for.", "You don't have a vault yet. When you do, your reminder email brings you here."],
+    ALIVE: ["Still with us?", "You're not due yet, but checking in early is fine. One tap resets the clock and your vault stays locked."],
+    FLATLINE: ["You missed a check-in.", `That's ${missed} of 3. Nothing has happened to your vault. One tap and it's as if you never left.`],
+    GRACE: ["This is your last warning.", `You've missed 3 check-ins in a row. In ${daysLeft} day${daysLeft === 1 ? "" : "s"} your vault opens for ${heir}. One tap stops it.`],
+    RELEASED: ["Too late.", `Your vault has already opened for ${heir}. If you're reading this, that's awkward.`],
+  }[vault ? st : "none"];
+  $("#ppHead").textContent = pulsedHere ? "Got it. You're alive." : copy[0];
+  $("#ppLede").textContent = pulsedHere ? "Your vault stays locked. You can close this page." : copy[1];
+  $("#pp").classList.toggle("urgent", !pulsedHere && st === "GRACE");
+  const canPulse = !!vault && st !== "RELEASED" && !pulsedHere;
+  $("#ppBtn").hidden = !vault || pulsedHere;
+  $("#ppBtn").disabled = !canPulse;
+  $("#ppBtn").classList.toggle("urgent", st === "FLATLINE" || st === "GRACE");
+  $("#ppFallback").hidden = !canPulse;
+  $("#ppMake").hidden = !!vault;
+  $("#ppSign").textContent = vault && vault.owner && canPulse
+    ? `Signed by ${vault.owner.account} (${shortAddr(vault.owner.address)}). DeadBolt pays the fee but can't sign for you.`
+    : "";
+}
+function pulseFromPage(via) {
+  if (!recordPulse(via)) return;
+  pulsedHere = true;
+  const done = $("#ppDone");
+  done.hidden = false;
+  done.innerHTML = `<b>Recorded on the chain</b> on ${dayStamp(vault)}. Your next check-in is due in ${vault.interval} days.` +
+    (via === "wallet" ? " You paid the fee from your own wallet this time." : "");
+  renderPulsePage(true);
+}
+$("#ppBtn").addEventListener("click", () => pulseFromPage("sponsored"));
+$("#ppWallet").addEventListener("click", () => pulseFromPage("wallet"));
+(function ppLoop() {
+  if (!$('[data-route="/pulse"]').hidden) renderPulsePage();
+  else $("#ppDone").hidden = true;
+  requestAnimationFrame(ppLoop);
+})();
+
+/* =========================================================
    THE RAVEN: a guide that always says what to tap next
    ========================================================= */
 let revealed = false;
@@ -527,7 +617,8 @@ function guideFor() {
       () => { if (!$("#secret").value.trim()) $("#secret").value = KINDS[currentKind()].sample; showStep(2); }];
     if (step === 2) return ["Who gets it when you're gone? Choose carefully. Ravens remember.", "Use a sample heir",
       () => { if (!$("#heirName").value.trim()) $("#heirName").value = "Aisha Bello"; if (!$("#heirEmail").value.trim()) $("#heirEmail").value = "aisha@example.com"; showStep(3); }];
-    if (step === 3) return ["How often should I check you're still breathing? I'll only start worrying after three missed check-ins in a row.", "Thirty days is fine", () => showStep(4)];
+    if (step === 3 && !owner) return ["How often should I check you're still breathing? And sign in, so only you can say you're alive. No wallet needed.", "Sign me in (demo)", signIn];
+    if (step === 3) return ["Signed in. I'll only start worrying after three missed check-ins in a row.", "Thirty days is fine", () => showStep(4)];
     return ["Pull the lever. Your secret gets locked right here in this browser. Only scrambled noise ever leaves.", "⚡ Throw the switch", () => $("#nextBtn").click()];
   }
   if (r === "/vitals") {
@@ -539,6 +630,12 @@ function guideFor() {
     if (st === "GRACE") return ["Three missed in a row. Grace period: 14 days of alarms on every channel. One tap undoes everything. Or…", "Let it lapse",
       () => { vault.simNow = Math.max(vault.simNow, releaseAt(vault) + 1000); }];
     return ["The chain clock has spoken. Shard C is free. Your heir may now read the will.", "Go to the will", go("#/claim")];
+  }
+  if (r === "/pulse") {
+    if (!vault) return ["This is the page your reminder email opens. Make a vault first.", "To the operating table", go("#/table")];
+    if (st === "RELEASED") return ["Too late for check-ins. The will has been read.", "Go to the will", go("#/claim")];
+    if (pulsedHere) return ["Recorded, and signed by you. Even I can't fake that. See you next month.", "Back to the vitals", go("#/vitals")];
+    return ["This is what your monthly email opens. One tap, signed by you. Even your gran could do it.", "Tap \"I'm alive\"", () => $("#ppBtn").click()];
   }
   if (r === "/claim") {
     if (!vault) return ["Nothing buried here yet. Make a vault first, then come back to dig.", "To the operating table", go("#/table")];
@@ -553,7 +650,7 @@ function guideFor() {
 }
 
 function renderGuide(force = false) {
-  const key = [curRoute(), step, !!forged, vault ? stateOf(vault) : "none", revealed, guideHushed].join("|");
+  const key = [curRoute(), step, !!forged, !!owner, pulsedHere, vault ? stateOf(vault) : "none", revealed, guideHushed].join("|");
   if (key === guideKey && !force) return;
   guideKey = key;
   const [text, label, run] = guideFor();

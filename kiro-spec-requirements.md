@@ -117,6 +117,20 @@ and a demo mode that compresses time for judging. All cryptography that touches 
 3. WHEN live mode is active THEN the UI SHALL read `lastPulse` and the release state from the chain, not from local storage.
 4. The UI SHALL label each trust assumption honestly (for example, which party relays pulses and which releases shard C), and SHALL NOT claim "trustless" for any component that depends on an operator.
 
+### Requirement 6a: Signed check-ins and the check-in page
+
+**User Story:** As an owner, I want my check-ins signed by me with nothing more than a Google sign-in, so that nobody (DeadBolt included) can fake that I'm alive or decide that I'm gone.
+
+#### Acceptance Criteria
+
+1. Creating a vault SHALL require the owner to sign in with Google (Sui zkLogin through Enoki), and the vault SHALL record the owner's zkLogin address as the only address allowed to check in.
+2. Every check-in SHALL be a transaction signed by the owner's address. DeadBolt SHALL only sponsor the fee and SHALL NOT be able to create, sign or replay a check-in.
+3. IF the sponsored fee is unavailable THEN the check-in page SHALL offer to check in from the owner's own wallet, paying the fee themselves.
+4. The reminder link SHALL open the check-in page (`/pulse`) with one primary action, "I'm alive", and no other required step except signing in again if the session has expired.
+5. WHEN a check-in succeeds THEN the page SHALL confirm that it was recorded on the chain and when the next check-in is due.
+6. The page copy SHALL follow the state: early ("Still with us?"), missed ("You missed a check-in", n of 3), GRACE ("This is your last warning", days left, in stitch red) and RELEASED ("Too late", button disabled).
+7. The Enoki API key and the Google client ID SHALL come from environment variables and SHALL NEVER be committed to the repo.
+
 ### Requirement 7: Demo mode
 
 **User Story:** As a hackathon judge, I want to watch the whole lifecycle in under two minutes, so that I can evaluate the product without waiting 44 days.

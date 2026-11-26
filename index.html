@@ -527,7 +527,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
 
 /* ---------- footer / toast ---------- */
 .foot { max-width: var(--max); margin: 0 auto; padding: 24px var(--pad) calc(24px + env(safe-area-inset-bottom)); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 0.7rem; color: var(--muted); border-top: 1px solid var(--line); }
-.toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); background: var(--bone); color: var(--bg); padding: 11px 18px; border-radius: 999px; font-size: 0.8rem; opacity: 0; pointer-events: none; transition: all .3s; z-index: 70; max-width: 90vw; text-align: center; }
+.toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); background: var(--bone); color: var(--bg); padding: 11px 18px; border-radius: 14px; font-size: 0.8rem; opacity: 0; pointer-events: none; transition: all .3s; z-index: 70; width: max-content; max-width: min(440px, calc(100vw - 32px)); text-align: center; line-height: 1.45; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 /* ---------- the problem ---------- */
@@ -594,6 +594,28 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
   .hc-code { font: 9pt monospace; word-break: break-all; border: 1px dashed #111; padding: 4mm; margin: 6mm 0; text-align: left; }
   .hc-foot { font-size: 9pt; color: #444; }
 }
+
+/* ---------- sign-in (create, step 3) ---------- */
+.signin { margin-top: 18px; padding: 18px; border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--bg-2); }
+.signin-title { margin: 0 0 6px; font: 400 1.4rem var(--f-display); }
+.signin .muted { margin: 0 0 14px; }
+.btn-light { background: var(--bone); color: var(--bg); }
+.btn-light:hover:not(:disabled) { box-shadow: 0 0 24px rgba(237,230,214,.25); }
+.btn-light.done { background: transparent; color: var(--volt); border-color: var(--volt); cursor: default; }
+.signed-as { margin: 12px 0 0; font-size: .78rem; color: var(--bone-2); overflow-wrap: anywhere; }
+.demo-note { margin: 12px 0 0; font-size: .66rem; letter-spacing: .06em; color: var(--muted); }
+
+/* ---------- check-in page ---------- */
+.pp { max-width: 560px; margin: 0 auto; padding: clamp(40px, 10vw, 90px) 0 40px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+.pp-head { font-size: clamp(2.6rem, 10vw, 4.6rem); margin: 0 0 14px; }
+.pp-lede { font-size: 1.08rem; color: var(--bone-2); margin: 0 0 34px; max-width: 460px; }
+.pp.urgent .pp-head { color: var(--stitch); }
+.pp-btn { width: 190px; height: 190px; font-size: 1.9rem; }
+.pp-sign { margin: 22px 0 0; font-size: .74rem; color: var(--muted); max-width: 420px; }
+.pp-done { margin: 22px 0 0; padding: 16px 18px; border: 1px solid var(--volt); border-radius: var(--r-sm); background: rgba(157,255,58,.05); color: var(--bone); max-width: 460px; animation: rise .4s both; }
+.pp-done b { color: var(--volt); font-weight: 600; }
+.pp-fallback { margin: 26px 0 0; color: var(--muted); }
+.pp .btn-volt { margin-top: 8px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -810,6 +832,13 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
           </div>
           <p class="note">Miss <b class="mono">3</b> check-ins in a row and a <b class="mono">14-day</b> grace period starts. One tap during grace undoes everything.</p>
           <p class="note worst" id="worstCase"></p>
+          <div class="signin" id="signinBox">
+            <p class="signin-title">Who's checking in?</p>
+            <p class="muted small">Every check-in is signed by your own account, so nobody can fake one, not even us. We cover the tiny fee, so you never need a crypto wallet.</p>
+            <button type="button" class="btn btn-light" id="googleBtn">Continue with Google</button>
+            <p class="signed-as mono" id="signedAs" hidden></p>
+            <p class="demo-note mono">Demo: sign-in is simulated here. No real account is used.</p>
+          </div>
         </fieldset>
 
         <!-- step 4 -->
@@ -876,6 +905,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
               <span class="pulse-label">I'm alive</span>
             </button>
             <p class="muted small" id="pulseHint">One tap resets the timer. This is what your email or Telegram link does.</p>
+            <a class="link-btn mono" href="#/pulse">Open the check-in page your email links to →</a>
           </div>
 
           <div class="card">
@@ -922,6 +952,21 @@ input:focus, textarea:focus { outline: none; border-color: var(--volt-dim); box-
     </section>
 
     <!-- ============ CLAIM (HEIR) ============ -->
+    <!-- ============ CHECK-IN PAGE (what the reminder email opens) ============ -->
+    <section class="route" data-route="/pulse" hidden>
+      <div class="pp" id="pp">
+        <p class="kicker mono">DeadBolt check-in</p>
+        <h1 class="display pp-head" id="ppHead">Still with us?</h1>
+        <p class="pp-lede" id="ppLede"></p>
+        <button class="pulse-btn pp-btn" id="ppBtn" type="button"><span class="pulse-ring"></span><span class="pulse-label">I'm alive</span></button>
+        <p class="pp-sign mono" id="ppSign"></p>
+        <div class="pp-done" id="ppDone" role="status" hidden></div>
+        <a class="btn btn-volt" id="ppMake" href="#/table" hidden>Make a vault</a>
+        <p class="pp-fallback small" id="ppFallback">Fee not covered for some reason? <button type="button" class="link-btn mono" id="ppWallet">Check in from your own wallet instead</button></p>
+        <p class="demo-note mono">Demo: this is the page your reminder email opens. The check-in and the chain are simulated.</p>
+      </div>
+    </section>
+
     <section class="route" data-route="/claim" hidden>
       <div class="etched claim-scene">
       <div class="page-head">

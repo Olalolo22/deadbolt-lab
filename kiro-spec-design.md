@@ -116,10 +116,26 @@ interface Vault {
 | --- | --- | --- |
 | Shamir split, AES-GCM | None: runs in the owner's browser | "Encrypted on your device" |
 | Shard C release | Chain clock + Seal key-server threshold | "Released by the chain clock" |
-| Email/Telegram pulse relay | The DeadBolt relayer submits the pulse transaction | "Relayed by DeadBolt. You can always pulse directly with your wallet." |
+| Check-ins | Signed by the owner's zkLogin address; DeadBolt only sponsors the fee (Enoki) | "Signed by you. DeadBolt pays the fee but can't sign for you." |
+| Sign-in | Google plus Enoki's managed salt. Together they could sign as the owner, which could only *delay* a release, never open a vault | "Sign-in by Google. The worst it could do is keep your vault shut longer." |
 
-**Known risk, stated honestly:** if the relayer stops relaying, an owner who only uses email could be released early.
-The mitigations are a wallet pulse that is always available, plus pre-deadline alarms on every channel during GRACE.
+**Known risk, stated honestly:** if DeadBolt stops sponsoring fees, check-ins still work from the owner's own wallet, and
+reminders plus 14 days of alarms on every channel give the owner time to notice. DeadBolt can never sign a check-in.
+
+### Signed check-ins (Sui)
+
+```move
+public struct Vault has key { id: UID, owner: address, last_pulse_ms: u64, interval_ms: u64 }
+
+/// Only the owner's own (zkLogin) address can check in. The sponsor pays gas but can't sign.
+public fun pulse(v: &mut Vault, clock: &Clock, ctx: &TxContext) {
+    assert!(ctx.sender() == v.owner, ENotOwner);
+    v.last_pulse_ms = clock.timestamp_ms();
+}
+```
+
+The check-in page builds this transaction, the owner signs it through Enoki's zkLogin wallet, and DeadBolt's server
+asks Enoki to sponsor and submit it. The fallback path signs and pays from the same address with the owner's own gas.
 
 ## Error Handling
 
