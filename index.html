@@ -301,15 +301,15 @@ main { max-width: var(--max); margin: 0 auto; padding: 0 var(--pad) 80px; }
 .lifecycle { list-style: none; padding: 0; margin: 0 0 96px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; counter-reset: lc; }
 .lc { border-top: 2px solid var(--line-2); padding: 18px 4px 0; }
 .lc-n { font-size: 0.72rem; color: var(--muted); }
-.lc h4 { font: 400 1.6rem var(--f-display); margin: 6px 0 6px; }
+.lc h3 { font: 400 1.6rem var(--f-display); margin: 6px 0 6px; }
 .lc p { margin: 0; color: var(--bone-2); font-size: 0.92rem; }
 .lc-alive { border-color: var(--volt); }
-.lc-alive h4 { color: var(--volt); }
+.lc-alive h3 { color: var(--volt); }
 .lc-flat { border-color: var(--bone-2); }
 .lc-grace { border-color: var(--stitch); }
-.lc-grace h4 { color: var(--stitch); }
+.lc-grace h3 { color: var(--stitch); }
 .lc-rise { border-color: var(--ether); }
-.lc-rise h4 { color: var(--ether); }
+.lc-rise h3 { color: var(--ether); }
 @media (max-width: 760px) { .lifecycle { grid-template-columns: 1fr 1fr; } }
 
 .lifecycle-wrap { --etch: var(--img-corpse); --etch-o: .2; --etch-pos: center 40%; padding-top: 24px; }
@@ -723,9 +723,27 @@ details.breakglass > .muted { margin: 10px 0 14px; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
+/* ---------- accessibility pass ---------- */
+/* a visible focus ring on everything you can tab to */
+:focus-visible { outline: 2px solid var(--volt); outline-offset: 3px; border-radius: 6px; }
+.btn-danger:focus-visible, .link-btn.danger:focus-visible { outline-color: var(--stitch); }
+main:focus { outline: none; }
+.skip-link { position: absolute; left: 12px; top: -60px; z-index: 100; padding: 10px 16px; border-radius: 999px; background: var(--bone); color: var(--bg); font-weight: 600; text-decoration: none; }
+.skip-link:focus { top: 12px; }
+/* bigger tap areas (44px) without changing how the controls look */
+.nav a, .brand, .demo-pill, .chip-btn, .btn-sm, .guide-actions .btn, .guide-actions .link-btn, .link-btn, .mg-reseal summary, #breakglass summary { position: relative; }
+.nav a::before, .brand::before, .demo-pill::before, .chip-btn::before, .btn-sm::before, .guide-actions .btn::before,
+.guide-actions .link-btn::before, .link-btn::before, .mg-reseal summary::before, #breakglass summary::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 44px; min-width: 44px; transform: translateY(-50%);
+}
+.guide-actions .link-btn::before { left: -8px; right: -8px; }
+p .link-btn::before, dd .link-btn::before, .heir-status .link-btn::before { display: none; }
+.warp { row-gap: 12px; } /* rows of chips keep their 44px tap areas apart */
+
 </style>
 </head>
 <body>
+  <a class="skip-link" href="#app">Skip to content</a>
   <div class="grain" aria-hidden="true"></div>
   <div class="flash" id="flash" aria-hidden="true"></div>
 
@@ -745,7 +763,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
     </button>
   </header>
 
-  <main id="app">
+  <main id="app" tabindex="-1">
     <div class="chain-banner mono" id="chainBanner" role="status" aria-live="polite" hidden>
       <span class="chain-dot"></span><span id="chainMsg"></span>
       <button type="button" class="link-btn mono" id="chainRetry" hidden>Try again</button>
@@ -767,7 +785,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
           <a class="btn btn-ghost" href="#anatomy">See the anatomy</a>
         </div>
         <div class="hero-monitor" aria-hidden="true">
-          <canvas id="heroEcg" height="120"></canvas>
+          <canvas id="heroEcg" height="120" aria-hidden="true"></canvas>
           <div class="hero-monitor-label mono"><span class="blink">●</span> SUBJECT ALIVE · LAST PULSE 0d AGO</div>
         </div>
       </div>
@@ -856,10 +874,10 @@ details.breakglass > .muted { margin: 10px 0 14px; }
         <h2 class="display">Four states. One direction.</h2>
       </div>
       <ol class="lifecycle">
-        <li class="lc lc-alive"><span class="lc-n mono">01</span><h4>Alive</h4><p>You tap the pulse link and the timer resets. Nothing moves.</p></li>
-        <li class="lc lc-flat"><span class="lc-n mono">02</span><h4>Flatline</h4><p>You miss a check-in. DeadBolt reminds you, up to three times. Nothing else happens.</p></li>
-        <li class="lc lc-grace"><span class="lc-n mono">03</span><h4>Grace</h4><p>Three missed in a row opens 14 days of alarms on every channel. One tap undoes everything.</p></li>
-        <li class="lc lc-rise"><span class="lc-n mono">04</span><h4>Resurrection</h4><p>The clock releases shard C to your heir's account, and only theirs. They add their card and the secret lives again.</p></li>
+        <li class="lc lc-alive"><span class="lc-n mono">01</span><h3>Alive</h3><p>You tap the pulse link and the timer resets. Nothing moves.</p></li>
+        <li class="lc lc-flat"><span class="lc-n mono">02</span><h3>Flatline</h3><p>You miss a check-in. DeadBolt reminds you, up to three times. Nothing else happens.</p></li>
+        <li class="lc lc-grace"><span class="lc-n mono">03</span><h3>Grace</h3><p>Three missed in a row opens 14 days of alarms on every channel. One tap undoes everything.</p></li>
+        <li class="lc lc-rise"><span class="lc-n mono">04</span><h3>Resurrection</h3><p>The clock releases shard C to your heir's account, and only theirs. They add their card and the secret lives again.</p></li>
       </ol>
       </div>
 
@@ -1021,7 +1039,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
         </div>
 
         <div class="monitor" id="monitor">
-          <canvas id="ecg" height="180"></canvas>
+          <canvas id="ecg" height="180" aria-hidden="true"></canvas>
           <div class="monitor-hud mono">
             <div><small id="hudDueLabel">next check-in</small><b id="hudDue">—</b></div>
             <div><small>since last pulse</small><b id="hudSince">—</b></div>
@@ -1040,7 +1058,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
           </div>
 
           <div class="card">
-            <h3 class="card-title mono">Lifecycle</h3>
+            <h2 class="card-title mono">Lifecycle</h2>
             <div class="track" id="track">
               <div class="track-fill" id="trackFill"></div>
               <div class="track-missed" id="trackMissed"></div>
@@ -1054,7 +1072,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
           </div>
 
           <div class="card">
-            <h3 class="card-title mono">Shard map</h3>
+            <h2 class="card-title mono">Shard map</h2>
             <ul class="shard-map">
               <li><span class="shard-chip a">A</span> <span id="mapHeir">Heir</span><em class="mono" id="mapA">invited</em></li>
               <li><span class="shard-chip b">B</span> You<em class="mono">sealed</em></li>
@@ -1065,7 +1083,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
           </div>
 
           <div class="card">
-            <h3 class="card-title mono">Time warp <span class="muted">(demo)</span></h3>
+            <h2 class="card-title mono">Time warp <span class="muted">(demo)</span></h2>
             <div class="warp">
               <button type="button" class="chip-btn" data-speed="0">Pause</button>
               <button type="button" class="chip-btn" data-speed="1">1 day/s</button>
@@ -1077,7 +1095,7 @@ details.breakglass > .muted { margin: 10px 0 14px; }
           </div>
 
           <div class="card wide manage" id="manage">
-            <h3 class="card-title mono">Manage vault</h3>
+            <h2 class="card-title mono">Manage vault</h2>
             <p class="muted small" id="manageNote">Every change here is signed by you, so it also counts as a check-in.</p>
 
             <div class="mg-block" id="mgIntervalBlock">
@@ -1132,12 +1150,12 @@ details.breakglass > .muted { margin: 10px 0 14px; }
           </div>
 
           <div class="card wide">
-            <h3 class="card-title mono">Lab notebook</h3>
+            <h2 class="card-title mono">Lab notebook</h2>
             <ol class="log mono" id="log"></ol>
           </div>
 
           <div class="card wide">
-            <h3 class="card-title mono">Outbox <span class="muted">(what DeadBolt has sent so far)</span></h3>
+            <h2 class="card-title mono">Outbox <span class="muted">(what DeadBolt has sent so far)</span></h2>
             <p class="muted small outbox-empty" id="outboxEmpty">Nothing yet. DeadBolt stays quiet while you keep checking in.</p>
             <ol class="outbox" id="outbox"></ol>
           </div>
