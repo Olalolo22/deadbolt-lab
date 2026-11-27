@@ -105,6 +105,21 @@ named." What it means, what to keep, nothing to do but "Accept with Google". The
 the final piece is ever released to. Vitals shows "invited" or "accepted as …". On the claim page, the heir signs in
 before the released piece appears. If they never accepted, the page says so and points to the break-glass route.
 
+## Accessibility (checked at 390px on every screen)
+
+- **Tap areas are at least 44px tall**, even when a control looks smaller (chips, nav, the Raven's buttons, text
+  links). An invisible area around each control does this, so the look doesn't change. Rows of chips sit 12px apart so
+  those areas never overlap.
+- **A visible focus ring** (volt, red on danger buttons) on everything you can reach with Tab, plus a "Skip to
+  content" link as the first stop.
+- **Headings never skip a level:** one H1 per screen, card titles are H2, the lifecycle states are H3.
+- **Contrast:** all text passes WCAG AA once animations finish. Disabled buttons are the only exception, which WCAG
+  allows.
+- **Screen readers:** the ECG canvases are hidden from them (the state is always written in words). The toast, the
+  Raven, the chain banner and every error message are live regions.
+- **Reduced motion** turns off every animation, including the chain banner's pulsing.
+- **Colour is never the only signal:** every state also has a word (ALIVE, FLATLINE, GRACE, RELEASED, "last seen").
+
 ## Claims we make, and what makes each one true
 
 | Claim in the UI | What makes it true | The honest limit we also show |

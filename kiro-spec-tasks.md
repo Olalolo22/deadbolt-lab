@@ -112,6 +112,6 @@
   - DBB2 backups (shard B + locked vault copy); "Prove it's you" on reseal and destroy; `manage_hash` in Move
   - `make_immutable` in the deploy script, after audit; the "nobody can change the rules" copy ships only after it
   - _Requirements: 5a.7, 5c.10, 7a.1–7a.6_
-  - Accessibility pass (tap targets, reduced motion, colour plus text for every state); screenshot every route for Devpost
+  - Accessibility pass exactly as in design-system.md "Accessibility": 44px tap areas, focus ring, skip link, heading order, hidden decorative canvases, live regions, reduced motion; screenshot every route for Devpost
   - Motion pass: awakening, sewing, developing and the crack, verified under reduced motion
   - _Requirements: 6.4, 8.2–8.6_
