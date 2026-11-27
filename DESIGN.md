@@ -43,12 +43,17 @@ Typography:
 
 ## Imagery rule: pages you feel vs pages you use
 
-Public-domain 19th-century engravings only (von Holst 1831, Aldini 1804, *A Galvanised Corpse* 1836, Doré 1884).
+Public-domain engravings only: von Holst 1831, Aldini 1804, *A Galvanised Corpse* 1836, Doré 1884, and for the
+three organs, anatomy plates from Vesalius's *Fabrica* (1543) and *Gray's Anatomy* (1918). Eerie, never gory: no
+photographs, no blood, no opened heads.
 Always inverted, so the ink glows bone-white on black. Never put them in boxed cards or light paper panels.
 
 - **Pages you feel are full-bleed scenes:** the landing page and Claim. The image is the page, with a scrim behind the text.
   On the landing page, scenes alternate with plain black content sections: hero (frontispiece) → stats →
-  Aldini quote scene → organs → lifecycle (corpse, faint) → custody table → closing scene (Raven) melting into the footer.
+  Aldini quote scene → the three organs → lifecycle (corpse, faint) → custody table → closing scene (Raven) melting into the footer.
+- **The organs are three full-bleed specimen scenes** (brain, heart, hand), not cards. Each plate floats in the dark
+  with its words beside it (below it on phones), alternating sides, and a row of red cross-stitches is sewn between
+  them as you scroll: the creature being stitched together.
 - **Pages you use stay black:** the Operating Table and Vitals. Only a faint etched band behind the page title,
   never behind forms, the monitor or the controls.
 - If an image fails to load, the section must still read correctly on plain black.
